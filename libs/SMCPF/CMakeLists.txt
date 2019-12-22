@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.7)
+project(SMCPF-lib)
+
+find_package(Boost 1.71.0 COMPONENTS math)
+if(Boost_FOUND)
+  add_library(SMCPF INTERFACE)
+  target_include_directories(SMCPF INTERFACE include/)
+else()
+  message( SEND_ERROR "Boost library is required!" )
+endif()
