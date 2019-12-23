@@ -1,0 +1,111 @@
+\def\R{\mathbb{R}} 
+\def\N{\mathbb{N}}
+\def\Z{\mathbb{Z}}
+\def\K{\mathbb{K}}
+\def\C{\mathbb{C}}
+\def\Rp{\mathbb{R}_{+}}
+\def\F{\mathbb{F}}
+\def\I{\mathbb{I}}
+
+\def\iff{~\Leftrightarrow~}
+
+\def\eps{\mathtt{eps}}
+% function spaces
+\def\CC{\mathscr{C}}
+% space of polynomials
+\def\P{{\mathcal{P}}}
+
+% integrals, derivatives
+\def\d{\mathrm{d}}
+\def\dx{\,\mathrm{d}x}
+\def\dt{\,\mathrm{d}t} 
+
+\def\rd{\text{rd}}
+
+\def\Df{\mathrm{D}f}
+
+\def\O{\mathcal{O}}
+
+\def\rq{\mathrm{R}}
+
+% duality pairing
+\def\<{\langle}
+\def\>{\rangle}
+
+% Swap the definition of \abs* and \norm*, so that \abs
+% and \norm resizes the size of the brackets, and the 
+% starred version does not.
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
+
+\makeatletter
+\let\oldabs\abs%
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+%
+\let\oldnorm\norm%
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+
+\makeatletter
+\newcommand*{\tp}{%
+  {\mathpalette\@transpose{}}%
+}
+\newcommand*{\@transpose}[2]{%
+  % #1: math style
+  % #2: unused
+  \raisebox{\depth}{$\m@th#1\intercal$}%
+}
+\makeatother
+
+\makeatletter
+\newcommand*{\herm}{%
+  {\mathpalette\@hermitian{}}%
+}
+\newcommand*{\@hermitian}[2]{%
+  % #1: math style
+  % #2: unused
+  \raisebox{\depth}{$\m@th#1{\mathrm{H}}$}%
+}
+\makeatother
+
+% vertical equals 
+\newcommand{\verteq}{\rotatebox{90}{$\,=$}}
+% underset with vertical equals
+\newcommand{\equalto}[2]{\underset{\scriptstyle\overset{\mkern4mu\verteq}{#2}}{#1}}
+
+% for fractions with bigger elements or nested fractions
+\newcommand{\ffrac}[2]{\ensuremath{\frac{\displaystyle #1}{\displaystyle #2}}}
+
+\DeclareMathOperator{\rang}{rang}
+\DeclareMathOperator{\cond}{cond}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\im}{im}
+\DeclareMathOperator{\spr}{spr}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\DeclarePairedDelimiterX{\inp}[2]{\langle}{\rangle}{#1, #2}
+
+\newcommand*{\mat}[1]{\bm{#1}}
+\let\oldvec=\vec
+\renewcommand{\vec}[1]{\mathbf{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%% Theorem environments %%%%%%%%%%%%%%%%%%%%%
+\newtheorem{theorem}[algocf]{Theorem}
+\newtheorem{corollary}[algocf]{Corollary}
+\newtheorem{lemma}[algocf]{Lemma}
+\newtheorem{proposition}[algocf]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[algocf]{Definition}
+\newtheorem{example}[algocf]{Example}
+\newtheorem*{remark*}{Remark}
+\newtheorem{remark}[algocf]{Remark} 
+ 
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End:
+ 

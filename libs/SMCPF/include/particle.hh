@@ -1,32 +1,26 @@
 #ifndef PARTICLE_HH
 #define PARTICLE_HH
 
-#include <iostream>
 #include <limits>
-#include <vector>
 
 namespace smcpf {
 template <typename PT> class Particle {
 private:
-  PT value;
-  double weight;
+  PT m_value;
+  double m_weight{std::numeric_limits<double>::quiet_NaN()};
 
 public:
-  Particle() : weight(std::numeric_limits<double>::quiet_NaN()) {}
+  Particle() {}
 
-  Particle(PT val, double w) : value(val), weight(w) {}
+  Particle(PT t_value, double t_weight)
+      : m_value(t_value), m_weight(t_weight) {}
 
-  void setValue(PT value) { this->value = value; }
-  void setWeight(double weight) { this->weight = weight; }
+  void set_value(PT t_value) { m_value = t_value; }
+  void set_weight(double t_weight) { m_weight = t_weight; }
 
-  template <typename T>
-  friend std::ostream &operator<<(std::ostream &os, const Particle<T> &p);
+  PT get_value() const { return m_value; }
+  double get_weight() const { return m_weight; }
 };
-  
-template <typename PT>
-std::ostream &operator<<(std::ostream &os, const Particle<PT> &p) {
-  return os << p.value(0,0) << ", " << p.value(1,0) << " (" << p.weight << ")";
-}
 } // namespace smcpf
 
 #endif // PARTICLE_HH

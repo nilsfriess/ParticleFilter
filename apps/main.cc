@@ -8,9 +8,8 @@
 #include "functors.hh"
 #include "lotkavolterra.hh"
 
-
 int main() {
-  constexpr int N = 20000; // Number of particles
+  constexpr long int N = 2000; // Number of particles
 
   typedef blaze::DynamicMatrix<double> matrix;
   typedef ParticleFilter<LotkaVolterra::ParticleType, N, BivaraiteGaussian> PF;
@@ -20,10 +19,10 @@ int main() {
   auto proposal = BivaraiteGaussian(mu, sigma);
 
   // Constructor takes paramaters for the predator prey model
-  auto model = std::make_shared<LotkaVolterra>(0.5, 2, 1, 0.5);
-  PF pf(model, proposal);
-  pf.createParticles();
+  LotkaVolterra model(0.5, 2, 1, 0.5);
+  PF pf(std::make_unique<LotkaVolterra>(model), proposal);
+  pf.create_particles();
 
-  for (int i = 0; i < 100; i++)
-    std::cout << pf(i) << std::endl;
+  std::cout << pf.weighted_mean() << std::endl;
+  std::cout << pf.mean() << std::endl;
 }

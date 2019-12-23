@@ -10,22 +10,24 @@ using namespace smcpf;
 
 class LotkaVolterra : public Model<matrix> {
 private:
-  BivaraiteGaussian prior; // Functor for sampling from 2D gaussian
+  BivaraiteGaussian m_prior; // Functor for sampling from 2D gaussian
 
-  double a, b, c, d;
+  const double m_alpha, m_beta, m_gamma, m_delta;
 
 public:
-  LotkaVolterra(double alpha, double beta, double gamma, double delta)
-      : a(alpha), b(beta), c(gamma), d(delta) {
+  LotkaVolterra(double t_alpha, double t_beta, double t_gamma, double t_delta)
+      : m_alpha(t_alpha), m_beta(t_beta), m_gamma(t_gamma), m_delta(t_delta) {
     // initialise prior
     const matrix mu = {{5}, {2}};
     const matrix sigma = {{1, 0}, {0, 0.5}};
-    prior = BivaraiteGaussian(mu, sigma);
+    m_prior = BivaraiteGaussian(mu, sigma);
   }
 
-  inline void samplePrior(Particle<matrix> &particle) const override {
-    particle.setValue(prior());
+  inline void sample_prior(Particle<matrix> &t_particle) const override {
+    t_particle.set_value(m_prior());
   }
+
+  inline matrix zero_particle() const override { return matrix(2, 1, 0.0); }
 
   typedef matrix ParticleType;
 };
