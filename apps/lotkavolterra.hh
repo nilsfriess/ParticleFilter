@@ -8,11 +8,13 @@
 
 using namespace smcpf;
 
-class LotkaVolterra : public Model<matrix> {
+class LotkaVolterra : public Model<matrix, double> {
 private:
   BivaraiteGaussian m_prior; // Functor for sampling from 2D gaussian
 
   const double m_alpha, m_beta, m_gamma, m_delta;
+
+  const double observation_variance = 0.2;
 
 public:
   LotkaVolterra(double t_alpha, double t_beta, double t_gamma, double t_delta)
@@ -28,6 +30,21 @@ public:
   }
 
   inline matrix zero_particle() const override { return matrix(2, 1, 0.0); }
+
+  double observation_density(const Particle<matrix> t_particle,
+                             double t_observation,
+                             [[maybe_unused]] double t_time) const override {
+    // Gaussian PDF, centered at the observation and evaluated at the
+    // particles predator value
+    const auto diff = std::abs(t_particle.get_value()(0, 0) - t_observation);
+    return diff + stats::rnorm(0, observation_variance);
+  }
+
+  double transition_density(const Particle<PT> t_particle_prev,
+			    const Particle<PT> t_particle_curr,
+			    [[maybe_unused]] double t_time) const override {
+    
+  }
 
   typedef matrix ParticleType;
 };

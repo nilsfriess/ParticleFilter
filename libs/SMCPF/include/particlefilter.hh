@@ -1,14 +1,16 @@
 #ifndef PARTICLE_FILTER_HH
 #define PARTICLE_FILTER_HH
 
+#include <algorithm>
+#include <execution>
 #include <memory>
 #include <numeric>
 #include <vector>
 
 namespace smcpf {
 
-template <typename PT> class Model;
-template <typename PT> class Particle;
+template <class PT, class OT> class Model;
+template <class PT> class Particle;
 
 enum ResamplingStrategy {
   RESAMPLING_NONE = 0,
@@ -17,12 +19,14 @@ enum ResamplingStrategy {
 };
 
 // PT: type of single particle (e.g. double, std::vector<double>)
-template <typename PT, long int N, class ProposalFunctor> class ParticleFilter {
+template <class PT, class OT, long int N, class ProposalFunctor,
+          bool parallel = true>
+class ParticleFilter {
 private:
   // every particle also contains its associated weight
   std::array<Particle<PT>, N> m_particles;
 
-  std::unique_ptr<Model<PT>> m_model;
+  std::unique_ptr<Model<PT, OT>> m_model;
   ProposalFunctor m_proposal;
 
   ResamplingStrategy m_strategy;
@@ -30,7 +34,7 @@ private:
 
 public:
   ParticleFilter(
-      std::unique_ptr<Model<PT>> t_model, ProposalFunctor t_proposal,
+    std::unique_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5)
       : m_model(std::move(t_model)), m_proposal(t_proposal),
@@ -43,6 +47,82 @@ public:
     }
   }
 
+  void sample_proposal() {
+    const auto sample = [&](Particle<PT> &particle) {
+      particle.set_value(m_proposal());
+    };
+
+    if constexpr (parallel) {
+      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+                    sample);
+    } else {
+      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
+                    sample);
+    }
+  }
+
+  void normalise_weights() {
+    const auto total_weights = std::accumulate(
+        m_particles.begin(), m_particles.end(), 0.0,
+        [](double sum, Particle<PT> p) { return sum + p.get_weight(); });
+
+    const auto scalar_mult = [total_weights](Particle<PT> &particle) {
+      particle.set_weight(1. / total_weights * particle.get_weight());
+    };
+
+    if constexpr (parallel) {
+      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+                    scalar_mult);
+    } else {
+      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
+                    scalar_mult);
+    }
+  }
+
+  void evolve(OT t_observation, double t_time) {
+
+    auto prev_particles = m_particles;
+    sample_proposal();
+
+    const auto transform_weight = [&](Particle<PT> &curr_particle,
+                                      const Particle<PT> &prev_particle) {
+      auto prev_value = prev_particle.get_value();
+      auto prev_weight = prev_particle.get_weihgt();
+
+      auto curr_value = curr_particle.get_weight();
+      curr_particle.set_weight(
+          prev_weight *
+          m_model.observation_density(curr_particle, t_observation, t_time) *
+          m_model.transition_density(prev_particle, curr_particle, t_time) /
+          m_proposal.density(prev_particle, curr_particle, t_observation,
+                             t_time));
+    };
+
+    if constexpr (parallel) {
+      std::transform(std::execution::par, m_particles.begin(),
+                     m_particles.end(), prev_particles.begin(),
+                     transform_weight);
+    } else {
+      std::transform(std::execution::seq, m_particles.begin(),
+                     m_particles.end(), prev_particles.begin(),
+                     transform_weight);
+    }
+
+    normalise_weights();
+  }
+
+  bool resampling_necessary() {
+    normalise_weights();
+    // compute effective sampling size
+    double sum = 0;
+    for (const auto &particle : m_particles) {
+      sum += particle.get_weight() * particle.get_weight();
+    }
+
+    // resample only if ess is below treshhold
+    return (1. / sum) < m_treshhold * N;
+  }
+
   // Compute the unweighted mean of the current set of particles
   inline PT mean() const {
     auto sum = m_model->zero_particle();
@@ -51,7 +131,7 @@ public:
     return 1. / N * sum;
   }
 
-  // Compute the unweighted mean of the current set of particles
+  // Compute the weighted mean of the current set of particles
   inline PT weighted_mean() const {
     auto sum = m_model->zero_particle();
     for (const auto &particle : m_particles)
@@ -66,11 +146,13 @@ public:
     m_strategy = t_strategy;
   }
 
-  void setResamplingTreshhold(double t_treshhold) { m_treshhold = t_treshhold; }
+  void set_resampling_treshhold(double t_treshhold) {
+    m_treshhold = t_treshhold;
+  }
 
-  void updateProposal(ProposalFunctor &t_proposal) { m_proposal = t_proposal; }
+  void update_proposal(ProposalFunctor &t_proposal) { m_proposal = t_proposal; }
 
-  Particle<PT> operator()(unsigned int i) { return m_particles[i]; }
+  Particle<PT> &operator()(unsigned int i) { return m_particles[i]; }
 };
 } // namespace smcpf
 

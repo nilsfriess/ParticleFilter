@@ -4,7 +4,7 @@
 #include <limits>
 
 namespace smcpf {
-template <typename PT> class Particle {
+template <class PT> class Particle {
 private:
   PT m_value;
   double m_weight{std::numeric_limits<double>::quiet_NaN()};
