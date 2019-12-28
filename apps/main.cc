@@ -27,6 +27,7 @@ int main() {
   // Constructor takes paramaters for the predator prey model
   PF pf(std::make_unique<LotkaVolterra>(0.5, 2, 1, 0.5), proposal);
   pf.create_particles();
+  pf.enable_history();
 
   std::cout << "Mean before = " << pf.weighted_mean() << '\n';
   pf.evolve(6, 0);

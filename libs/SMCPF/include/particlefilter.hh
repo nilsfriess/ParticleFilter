@@ -7,10 +7,11 @@
 #include <numeric>
 #include <vector>
 
-namespace smcpf {
+#include "history.hh"
+#include "particle.hh"
+#include "model.hh"
 
-template <class PT, class OT> class Model;
-template <class PT> class Particle;
+namespace smcpf {
 
 enum ResamplingStrategy {
   RESAMPLING_NONE = 0,
@@ -19,6 +20,10 @@ enum ResamplingStrategy {
 };
 
 // PT: type of single particle (e.g. double, std::vector<double>)
+// OT: type of observation
+// N: number of particles
+// ProposalFunctor: Functor representing the Proposal distribution TODO: CHANGE TO ABSTRACT INTERFACE
+// parallel: indicates if parallel versions of eg. std::for_each should be used
 template <class PT, class OT, long int N, class ProposalFunctor,
           bool parallel = false>
 class ParticleFilter {
@@ -32,6 +37,9 @@ private:
 
   ResamplingStrategy m_strategy;
   double m_treshhold;
+
+  bool m_save_history = false;
+  History<PT> m_history;
 
 public:
   ParticleFilter(
@@ -118,6 +126,10 @@ public:
     return (1. / sum) < m_treshhold * N;
   }
 
+  void resample() {
+    
+  }
+
   // Compute the unweighted mean of the current set of particles
   inline PT mean() const {
     auto sum = m_model->zero_particle();
@@ -146,6 +158,8 @@ public:
   }
 
   void update_proposal(ProposalFunctor &t_proposal) { m_proposal = t_proposal; }
+
+  void enable_history() { m_save_history = true; }
 
   Particle<PT> &operator()(unsigned int i) { return m_particles[i]; }
 };
