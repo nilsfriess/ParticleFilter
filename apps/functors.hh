@@ -16,6 +16,10 @@ struct BivaraiteGaussian {
   BivaraiteGaussian() {}
 
   matrix operator()() const { return stats::rmvnorm(m_mu, m_sigma); }
+
+  double density(matrix t_x) const {
+    return stats::dmvnorm(t_x, m_mu, m_sigma);
+  }
 };
 
 #endif // FUNCTORS_HH

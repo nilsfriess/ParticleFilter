@@ -20,13 +20,14 @@ enum ResamplingStrategy {
 
 // PT: type of single particle (e.g. double, std::vector<double>)
 template <class PT, class OT, long int N, class ProposalFunctor,
-          bool parallel = true>
+          bool parallel = false>
 class ParticleFilter {
 private:
   // every particle also contains its associated weight
   std::array<Particle<PT>, N> m_particles;
 
   std::unique_ptr<Model<PT, OT>> m_model;
+
   ProposalFunctor m_proposal;
 
   ResamplingStrategy m_strategy;
@@ -34,7 +35,7 @@ private:
 
 public:
   ParticleFilter(
-    std::unique_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
+      std::unique_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5)
       : m_model(std::move(t_model)), m_proposal(t_proposal),
@@ -49,6 +50,9 @@ public:
 
   void sample_proposal() {
     const auto sample = [&](Particle<PT> &particle) {
+      // save current particle state; then update its value
+      particle.set_previous_value(particle.get_value());
+      particle.set_previous_weight(particle.get_weight());
       particle.set_value(m_proposal());
     };
 
@@ -64,7 +68,7 @@ public:
   void normalise_weights() {
     const auto total_weights = std::accumulate(
         m_particles.begin(), m_particles.end(), 0.0,
-        [](double sum, Particle<PT> p) { return sum + p.get_weight(); });
+        [](double sum, const Particle<PT> &p) { return sum + p.get_weight(); });
 
     const auto scalar_mult = [total_weights](Particle<PT> &particle) {
       particle.set_weight(1. / total_weights * particle.get_weight());
@@ -80,32 +84,23 @@ public:
   }
 
   void evolve(OT t_observation, double t_time) {
-
-    auto prev_particles = m_particles;
     sample_proposal();
 
-    const auto transform_weight = [&](Particle<PT> &curr_particle,
-                                      const Particle<PT> &prev_particle) {
-      auto prev_value = prev_particle.get_value();
-      auto prev_weight = prev_particle.get_weihgt();
-
-      auto curr_value = curr_particle.get_weight();
+    const auto transform_weight = [&](Particle<PT> &curr_particle) {
       curr_particle.set_weight(
-          prev_weight *
-          m_model.observation_density(curr_particle, t_observation, t_time) *
-          m_model.transition_density(prev_particle, curr_particle, t_time) /
-          m_proposal.density(prev_particle, curr_particle, t_observation,
-                             t_time));
+          curr_particle.get_previous().get_weight() *
+          m_model->observation_density(curr_particle, t_observation, t_time) *
+          m_model->transition_density(curr_particle.get_previous(),
+                                      curr_particle, t_time) /
+          m_proposal.density(curr_particle.get_value()));
     };
 
     if constexpr (parallel) {
-      std::transform(std::execution::par, m_particles.begin(),
-                     m_particles.end(), prev_particles.begin(),
-                     transform_weight);
+      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+                    transform_weight);
     } else {
-      std::transform(std::execution::seq, m_particles.begin(),
-                     m_particles.end(), prev_particles.begin(),
-                     transform_weight);
+      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
+                    transform_weight);
     }
 
     normalise_weights();

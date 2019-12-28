@@ -12,12 +12,12 @@ public:
   // in 1D)
   virtual PT zero_particle() const = 0;
 
-  virtual double observation_density(const Particle<PT> t_particle,
-                                     const OT t_observation,
+  virtual double observation_density(const Particle<PT> &t_particle,
+                                     const OT &t_observation,
                                      double t_time) const = 0;
 
-  virtual double transition_density(const Particle<PT> t_particle_prev,
-                                    const Particle<PT> t_particle_curr,
+  virtual double transition_density(const Particle<PT> &t_particle_prev,
+                                    const Particle<PT> &t_particle_curr,
                                     double t_time) const = 0;
 };
 
