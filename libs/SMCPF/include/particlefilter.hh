@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "history.hh"
-#include "particle.hh"
 #include "model.hh"
+#include "particle.hh"
 
 namespace smcpf {
 
@@ -22,8 +22,9 @@ enum ResamplingStrategy {
 // PT: type of single particle (e.g. double, std::vector<double>)
 // OT: type of observation
 // N: number of particles
-// ProposalFunctor: Functor representing the Proposal distribution TODO: CHANGE TO ABSTRACT INTERFACE
-// parallel: indicates if parallel versions of eg. std::for_each should be used
+// ProposalFunctor: Functor representing the Proposal distribution TODO: CHANGE
+// TO ABSTRACT INTERFACE parallel: indicates if parallel versions of eg.
+// std::for_each should be used
 template <class PT, class OT, long int N, class ProposalFunctor,
           bool parallel = false>
 class ParticleFilter {
@@ -31,7 +32,7 @@ private:
   // every particle also contains its associated weight
   std::array<Particle<PT>, N> m_particles;
 
-  std::unique_ptr<Model<PT, OT>> m_model;
+  std::shared_ptr<Model<PT, OT>> m_model;
 
   ProposalFunctor m_proposal;
 
@@ -43,13 +44,12 @@ private:
 
 public:
   ParticleFilter(
-      std::unique_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
+      std::shared_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5)
-      : m_model(std::move(t_model)), m_proposal(t_proposal),
-        m_strategy(t_strategy), m_treshhold(t_treshhold) {}
-
-  void create_particles() {
+      : m_model(t_model), m_proposal(t_proposal),
+        m_strategy(t_strategy), m_treshhold(t_treshhold) {
+    // Create initial set of particles by drawing from the prior
     for (auto &particle : m_particles) {
       m_model->sample_prior(particle);
       particle.set_weight(1. / N);
@@ -126,9 +126,7 @@ public:
     return (1. / sum) < m_treshhold * N;
   }
 
-  void resample() {
-    
-  }
+  void resample() {}
 
   // Compute the unweighted mean of the current set of particles
   inline PT mean() const {

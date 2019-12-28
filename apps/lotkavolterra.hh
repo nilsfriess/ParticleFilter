@@ -1,6 +1,10 @@
 #ifndef LOTKAVOLTERRA_HH
 #define LOTKAVOLTERRA_HH
 
+#include <fstream>
+#include <deque>
+#include <string>
+
 #include <model.hh>
 #include <particle.hh>
 
@@ -17,9 +21,35 @@ private:
 
   const double m_alpha, m_beta, m_gamma, m_delta;
 
-  const double observation_variance = 0.8;
+  const double observation_variance = 0.8; // REFACTOR
 
   typedef boost::array<double, 2> state_type;
+
+  mutable std::deque<std::pair<double, double> > m_observations;
+
+  void load_observations(const std::string &t_filename) {
+    const auto read_line = [](std::istream &str) {
+      std::vector<double> result;
+      std::string line;
+      std::getline(str, line);
+
+      std::stringstream lineStream(line);
+      std::string cell;
+
+      while (std::getline(lineStream, cell, ',')) {
+        result.push_back(std::stod(cell));
+      }
+      return result;
+    };
+
+    std::ifstream file(t_filename);
+    while(true) {
+      auto line = read_line(file);
+      if (line.empty())
+	break;
+      m_observations.push_back(std::make_pair(line[0], line[1]));
+    }
+  }
 
 public:
   matrix evolve(const Particle<matrix> &t_particle) const {
@@ -42,6 +72,8 @@ public:
     const matrix mu = {{5}, {2}};
     const matrix sigma = {{1, 0}, {0, 0.5}};
     m_prior = BivaraiteGaussian(mu, sigma);
+
+    load_observations("obs.csv");
   }
 
   inline void sample_prior(Particle<matrix> &t_particle) const override {
@@ -67,6 +99,16 @@ public:
                                         {{1, 0}, {0, 1}});
     auto evolved_value = evolve(t_particle_curr);
     return transition_kernel.density(evolved_value);
+  }
+
+  std::optional<std::pair<double, double> > next_observation() const {
+    if (m_observations.empty()) {
+      return {};
+    } else {
+      auto obs = m_observations.front();
+      m_observations.pop_front();
+      return obs;
+    }
   }
 
   typedef matrix ParticleType;

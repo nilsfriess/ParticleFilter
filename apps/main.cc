@@ -10,14 +10,14 @@
 #include "lotkavolterra.hh"
 
 int main() {
-  constexpr long int N = 1000;
+  constexpr long int N = 5000;
 
   typedef blaze::DynamicMatrix<double> matrix;
   typedef ParticleFilter<LotkaVolterra::ParticleType, // Type of one particle
                          double,                      // Type of observations
                          N,                           // Number of Particles
                          BivaraiteGaussian,           // Functor that represents the prior
-			 true>                        // should run parallel or not
+			 false>                       // should run parallel or not
     PF;
 
   matrix mu = {{5}, {8}};
@@ -25,13 +25,19 @@ int main() {
   auto proposal = BivaraiteGaussian(mu, sigma);
 
   // Constructor takes paramaters for the predator prey model
-  PF pf(std::make_unique<LotkaVolterra>(0.5, 2, 1, 0.5), proposal);
-  pf.create_particles();
+  auto model = std::make_shared<LotkaVolterra>(0.5, 2, 1, 0.5);
+  PF pf(model, proposal);
   pf.enable_history();
 
-  std::cout << "Mean before = " << pf.weighted_mean() << '\n';
-  pf.evolve(6, 0);
-  std::cout << "Mean after  = " << pf.weighted_mean() << '\n';
+  while(auto obs = model->next_observation()) {
+    std::cout << "Time = " << obs.value().first << ", Value = " << obs.value().second << '\n';
+    pf.evolve(obs.value().second, obs.value().first);
+    std::cout << pf.weighted_mean() << '\n';
+  }
+
+  // std::cout << "Mean before = " << pf.mean() << '\n';
+  // pf.evolve(6, 0);
+  // std::cout << "Mean after  = " << pf.mean() << '\n';
   
-  std::cout << "Resampling is " << (pf.resampling_necessary() ? "" : "not ") << "necessary" << '\n';
+  // std::cout << "Resampling is " << (pf.resampling_necessary() ? "" : "not ") << "necessary" << '\n';
 }

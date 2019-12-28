@@ -1,6 +1,8 @@
 #ifndef MODEL_HH
 #define MODEL_HH
 
+#include <optional>
+
 #include "particle.hh"
 
 namespace smcpf {
@@ -19,6 +21,8 @@ public:
   virtual double transition_density(const Particle<PT> &t_particle_prev,
                                     const Particle<PT> &t_particle_curr,
                                     double t_time) const = 0;
+
+  virtual std::optional<std::pair<double, OT> > next_observation() const = 0;
 };
 
 } // namespace smcpf
