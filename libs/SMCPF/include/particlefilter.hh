@@ -25,14 +25,14 @@ enum ResamplingStrategy {
 // ProposalFunctor: Functor representing the Proposal distribution TODO: CHANGE
 // TO ABSTRACT INTERFACE parallel: indicates if parallel versions of eg.
 // std::for_each should be used
-template <class PT, class OT, long int N, class ProposalFunctor,
+template <class PT, class OT, size_t N, class ProposalFunctor,
           bool parallel = false>
 class ParticleFilter {
 private:
   // every particle also contains its associated weight
   std::array<Particle<PT>, N> m_particles;
 
-  std::shared_ptr<Model<PT, OT>> m_model;
+  Model<PT, OT> *m_model;
 
   ProposalFunctor m_proposal;
 
@@ -44,17 +44,23 @@ private:
 
 public:
   ParticleFilter(
-      std::shared_ptr<Model<PT, OT>> t_model, ProposalFunctor t_proposal,
+      Model<PT, OT> *t_model, ProposalFunctor t_proposal,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5)
-      : m_model(t_model), m_proposal(t_proposal),
-        m_strategy(t_strategy), m_treshhold(t_treshhold) {
-    // Create initial set of particles by drawing from the prior
+      : m_model(t_model), m_proposal(t_proposal), m_strategy(t_strategy),
+        m_treshhold(t_treshhold) {
+    // RAII: Create initial set of particles by drawing from the prior so that
+    // the particle filter is ready to use after constructing it
     for (auto &particle : m_particles) {
       m_model->sample_prior(particle);
       particle.set_weight(1. / N);
     }
   }
+
+  // disable copying or moving particle filters
+  ParticleFilter(const ParticleFilter&) = delete;
+  ParticleFilter(const ParticleFilter&&) = delete;
+  ~ParticleFilter() = default;
 
   void sample_proposal() {
     const auto sample = [&](Particle<PT> &particle) {
@@ -65,7 +71,7 @@ public:
     };
 
     if constexpr (parallel) {
-      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
                     sample);
     } else {
       std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
@@ -83,7 +89,7 @@ public:
     };
 
     if constexpr (parallel) {
-      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
                     scalar_mult);
     } else {
       std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
@@ -96,6 +102,7 @@ public:
 
     const auto transform_weight = [&](Particle<PT> &curr_particle) {
       curr_particle.set_weight(
+          // see paper for derivation of this update formula
           curr_particle.get_previous().get_weight() *
           m_model->observation_density(curr_particle, t_observation, t_time) *
           m_model->transition_density(curr_particle.get_previous(),
@@ -104,7 +111,7 @@ public:
     };
 
     if constexpr (parallel) {
-      std::for_each(std::execution::par, m_particles.begin(), m_particles.end(),
+      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
                     transform_weight);
     } else {
       std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
@@ -157,6 +164,7 @@ public:
 
   void update_proposal(ProposalFunctor &t_proposal) { m_proposal = t_proposal; }
 
+  // Once history is enabled, it cannot be disabled again
   void enable_history() { m_save_history = true; }
 
   Particle<PT> &operator()(unsigned int i) { return m_particles[i]; }
