@@ -3,9 +3,12 @@
 
 #include <algorithm>
 #include <execution>
+#include <iostream>
 #include <memory>
 #include <numeric>
+#include <type_traits>
 #include <vector>
+#include <random>
 
 #include "history.hh"
 #include "model.hh"
@@ -19,13 +22,7 @@ enum ResamplingStrategy {
   RESAMPLING_SYSTEMATIC
 };
 
-// PT: type of single particle (e.g. double, std::vector<double>)
-// OT: type of observation
-// N: number of particles
-// ProposalFunctor: Functor representing the Proposal distribution TODO: CHANGE
-// TO ABSTRACT INTERFACE parallel: indicates if parallel versions of eg.
-// std::for_each should be used
-template <class PT, class OT, size_t N, class ProposalFunctor,
+template <class PT, class OT, size_t N, bool enable_history = false,
           bool parallel = false>
 class ParticleFilter {
 private:
@@ -34,63 +31,51 @@ private:
 
   Model<PT, OT> *m_model;
 
-  ProposalFunctor m_proposal;
-
   ResamplingStrategy m_strategy;
   double m_treshhold;
 
-  bool m_save_history = false;
   History<PT> m_history;
 
+  std::mt19937 m_gen;
+
 public:
-  ParticleFilter(
-      Model<PT, OT> *t_model, ProposalFunctor t_proposal,
+  explicit ParticleFilter(
+      Model<PT, OT> *t_model,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5)
-      : m_model(t_model), m_proposal(t_proposal), m_strategy(t_strategy),
-        m_treshhold(t_treshhold) {
+      : m_model(t_model), m_strategy(t_strategy), m_treshhold(t_treshhold),
+        m_gen() {
     // RAII: Create initial set of particles by drawing from the prior so that
     // the particle filter is ready to use after constructing it
     for (auto &particle : m_particles) {
       m_model->sample_prior(particle);
       particle.set_weight(1. / N);
     }
+
+    if constexpr (enable_history) {
+      m_history.set_means(mean(), weighted_mean());
+      m_history.set_time(-1);
+      m_history.flush();
+    }
   }
 
   // disable copying or moving particle filters
-  ParticleFilter(const ParticleFilter&) = delete;
-  ParticleFilter(const ParticleFilter&&) = delete;
+  ParticleFilter(const ParticleFilter &) = delete;
+  ParticleFilter(const ParticleFilter &&) = delete;
   ~ParticleFilter() = default;
-
-  void sample_proposal() {
-    const auto sample = [&](Particle<PT> &particle) {
-      // save current particle state; then update its value
-      particle.set_previous_value(particle.get_value());
-      particle.set_previous_weight(particle.get_weight());
-      particle.set_value(m_proposal());
-    };
-
-    if constexpr (parallel) {
-      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
-                    sample);
-    } else {
-      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
-                    sample);
-    }
-  }
 
   void normalise_weights() {
     const auto total_weights = std::accumulate(
         m_particles.begin(), m_particles.end(), 0.0,
-        [](double sum, const Particle<PT> &p) { return sum + p.get_weight(); });
+        [](double acc, const Particle<PT> &p) { return acc + p.get_weight(); });
 
     const auto scalar_mult = [total_weights](Particle<PT> &particle) {
       particle.set_weight(1. / total_weights * particle.get_weight());
     };
 
     if constexpr (parallel) {
-      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
-                    scalar_mult);
+      std::for_each(std::execution::par_unseq, m_particles.begin(),
+                    m_particles.end(), scalar_mult);
     } else {
       std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
                     scalar_mult);
@@ -98,42 +83,73 @@ public:
   }
 
   void evolve(OT t_observation, double t_time) {
-    sample_proposal();
-
     const auto transform_weight = [&](Particle<PT> &curr_particle) {
+      // update particle by sampling from proposal distribution
+      curr_particle.set_value(
+          m_model->sample_proposal(curr_particle, t_observation, t_time));
+
+      // update weight according to the function defined in the model
       curr_particle.set_weight(
-          // see paper for derivation of this update formula
-          curr_particle.get_previous().get_weight() *
-          m_model->observation_density(curr_particle, t_observation, t_time) *
-          m_model->transition_density(curr_particle.get_previous(),
-                                      curr_particle, t_time) /
-          m_proposal.density(curr_particle.get_value()));
+          curr_particle.get_weight() *
+          m_model->update_weight(curr_particle, t_observation, t_time));
     };
 
     if constexpr (parallel) {
-      std::for_each(std::execution::par_unseq, m_particles.begin(), m_particles.end(),
-                    transform_weight);
+      std::for_each(std::execution::par_unseq, m_particles.begin(),
+                    m_particles.end(), transform_weight);
     } else {
       std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
                     transform_weight);
     }
 
-    normalise_weights();
+    if (resampling_necessary()) resample();
+
+    if constexpr (enable_history) {
+      m_history.set_means(mean(), weighted_mean());
+      m_history.set_time(t_time);
+      m_history.flush();
+    }
   }
 
   bool resampling_necessary() {
     normalise_weights();
     // compute effective sampling size
-    double sum = 0;
-    for (const auto &particle : m_particles) {
-      sum += particle.get_weight() * particle.get_weight();
-    }
-
+    double squared_sum =
+        std::accumulate(m_particles.begin(), m_particles.end(), 0.0,
+                        [](double s, const auto &particle) {
+                          const auto weight = particle.get_weight();
+                          return s + (weight * weight);
+                        });
     // resample only if ess is below treshhold
-    return (1. / sum) < m_treshhold * N;
+    return (1. / squared_sum) < m_treshhold * N;
   }
 
-  void resample() {}
+  void resample() {
+    std::vector<double> cum_sum_weights(N);
+    cum_sum_weights[0] =  m_particles[0].get_weight();
+    for (unsigned i = 1; i < N; ++i) {
+      cum_sum_weights[i] = cum_sum_weights[i - 1] + m_particles[i].get_weight();
+    }
+
+    std::uniform_real_distribution<> dis(0., 1.);
+    double u_init = dis(m_gen);
+
+    std::vector<unsigned> indices(N);
+    
+    unsigned i = 0;
+    for (unsigned j = 1; j <= N; j++) {
+      auto u = (u_init + j - 1) / N;
+      while (u > cum_sum_weights[i])
+        ++i;
+      indices[j-1] = i;
+    }
+
+    auto old_particles = m_particles;
+    for (unsigned k=0; k<N; k++) {
+      m_particles[k].set_value(old_particles[indices[k]].get_value());
+      m_particles[k].set_weight(1. / N);
+    }
+  }
 
   // Compute the unweighted mean of the current set of particles
   inline PT mean() const {
@@ -150,7 +166,7 @@ public:
       sum += particle.get_weight() * particle.get_value();
     auto total_weights = std::accumulate(
         m_particles.begin(), m_particles.end(), 0.0,
-        [](double sum, Particle<PT> p) { return sum + p.get_weight(); });
+        [](double acc, Particle<PT> p) { return acc + p.get_weight(); });
     return sum / total_weights;
   }
 
@@ -162,10 +178,11 @@ public:
     m_treshhold = t_treshhold;
   }
 
-  void update_proposal(ProposalFunctor &t_proposal) { m_proposal = t_proposal; }
-
-  // Once history is enabled, it cannot be disabled again
-  void enable_history() { m_save_history = true; }
+  template <class PTWriter>
+  void write_history(std::ostream &t_out, PTWriter t_writer,
+                     char t_separator = ',') {
+    m_history.write_all(t_out, t_writer, t_separator);
+  }
 
   Particle<PT> &operator()(unsigned int i) { return m_particles[i]; }
 };
