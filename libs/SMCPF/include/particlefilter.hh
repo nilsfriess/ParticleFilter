@@ -6,9 +6,9 @@
 #include <iostream>
 #include <memory>
 #include <numeric>
+#include <random>
 #include <type_traits>
 #include <vector>
-#include <random>
 
 #include "history.hh"
 #include "model.hh"
@@ -16,8 +16,8 @@
 
 namespace smcpf {
 
-enum ResamplingStrategy {
-  RESAMPLING_NONE = 0,
+enum class ResamplingStrategy {
+  RESAMPLING_NONE,
   RESAMPLING_STRATIFIED,
   RESAMPLING_SYSTEMATIC
 };
@@ -27,7 +27,7 @@ template <class PT, class OT, size_t N, bool enable_history = false,
 class ParticleFilter {
 private:
   // every particle also contains its associated weight
-  std::array<Particle<PT>, N> m_particles;
+  std::vector<Particle<PT>> m_particles;
 
   Model<PT, OT> *m_model;
 
@@ -42,9 +42,9 @@ public:
   explicit ParticleFilter(
       Model<PT, OT> *t_model,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
-      double t_treshhold = 0.5)
-      : m_model(t_model), m_strategy(t_strategy), m_treshhold(t_treshhold),
-        m_gen() {
+      double t_treshhold = 0.5, double t_seed = 0)
+    : m_particles(N), m_model(t_model), m_strategy(t_strategy), m_treshhold(t_treshhold),
+        m_gen(t_seed) {
     // RAII: Create initial set of particles by drawing from the prior so that
     // the particle filter is ready to use after constructing it
     for (auto &particle : m_particles) {
@@ -54,7 +54,7 @@ public:
 
     if constexpr (enable_history) {
       m_history.set_means(mean(), weighted_mean());
-      m_history.set_time(-1);
+      m_history.set_time(0);
       m_history.flush();
     }
   }
@@ -84,14 +84,14 @@ public:
 
   void evolve(OT t_observation, double t_time) {
     const auto transform_weight = [&](Particle<PT> &curr_particle) {
-      // update particle by sampling from proposal distribution
-      curr_particle.set_value(
-          m_model->sample_proposal(curr_particle, t_observation, t_time));
-
       // update weight according to the function defined in the model
       curr_particle.set_weight(
           curr_particle.get_weight() *
           m_model->update_weight(curr_particle, t_observation, t_time));
+
+      // update particle by sampling from proposal distribution
+      curr_particle.set_value(
+          m_model->sample_proposal(curr_particle, t_observation, t_time));
     };
 
     if constexpr (parallel) {
@@ -102,7 +102,8 @@ public:
                     transform_weight);
     }
 
-    if (resampling_necessary()) resample();
+    if (resampling_necessary())
+      resample();
 
     if constexpr (enable_history) {
       m_history.set_means(mean(), weighted_mean());
@@ -126,7 +127,7 @@ public:
 
   void resample() {
     std::vector<double> cum_sum_weights(N);
-    cum_sum_weights[0] =  m_particles[0].get_weight();
+    cum_sum_weights[0] = m_particles[0].get_weight();
     for (unsigned i = 1; i < N; ++i) {
       cum_sum_weights[i] = cum_sum_weights[i - 1] + m_particles[i].get_weight();
     }
@@ -135,17 +136,17 @@ public:
     double u_init = dis(m_gen);
 
     std::vector<unsigned> indices(N);
-    
+
     unsigned i = 0;
     for (unsigned j = 1; j <= N; j++) {
       auto u = (u_init + j - 1) / N;
       while (u > cum_sum_weights[i])
         ++i;
-      indices[j-1] = i;
+      indices[j - 1] = i;
     }
 
     auto old_particles = m_particles;
-    for (unsigned k=0; k<N; k++) {
+    for (unsigned k = 0; k < N; k++) {
       m_particles[k].set_value(old_particles[indices[k]].get_value());
       m_particles[k].set_weight(1. / N);
     }
@@ -184,7 +185,7 @@ public:
     m_history.write_all(t_out, t_writer, t_separator);
   }
 
-  Particle<PT> &operator()(unsigned int i) { return m_particles[i]; }
+  Particle<PT> &operator()(unsigned int i) const { return m_particles[i]; }
 };
 } // namespace smcpf
 
