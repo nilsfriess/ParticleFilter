@@ -2,84 +2,52 @@
 fontsize=11pt,
 paper=a4,
 numbers=noenddot,
-parskip=full
+parskip=half
 %draft
 ]{scrartcl}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 
-\usepackage[backend=biber,style=alphabetic,maxcitenames=2]{biblatex}
-%\addbibresource{bibliography.bib}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{bibliography.bib}
 
-\include{preambl}e
+\newcommand{\HRule}{\rule{.9\linewidth}{.6pt}}
+
+\include{preamble}
 \include{mathsetup}
 
 % DRAFT PACKAGES
-\usepackage{showlabels}
+%\usepackage{showlabels}
+
+\title{{\normalsize Software Practical Uncertainty Quantification}\\Report}
 
 \begin{document}
-\section*{Basics of Monte Carlo Methods}
-Before discussing Sequential Monte Carlo methods and Particle Filters
-in more detail, we introduce the basics of Monte Carlo methods that
-will be needed later.
+\title{ \normalsize
+  \HRule\\[0.5cm]
+  \large \textsc{Software practical --- Uncertainty Quantification}\\
+  \LARGE {Implementation of a Sequential Monte Carlo Particle Filter Library in C++}\\
+  \HRule\\[0.5cm]
+  \normalsize Winter semester 2019 \vfill }
 
-In this section we consider approximating for a fixed $n \in \N$ the
-probability density $\pi_n(x_{1 : n})$ where
-$x_{1:n} \coloneqq (x_1, \dotsc, x_n)$. A Monte Carlo method
-approximates $\pi_n(x_{1:n})$ by the empirical measure
-\[
-  \hat{\pi}_n(x_{1:n}) = \frac{1}{N} \sum_{i = 1}^N
-  \delta_{X_{1:n}^i}(x_{1:n})\,,
-\]
-where the $X_{1:n}^i$, $i = 1, \dotsc, N$ are $N$ independent samples
-of $\pi_n(x_{1:n})$ and $\delta_{x_0}(x)$ denotes the Dirac delta mass
-located at $x_0$. The expectation of a test function
-$\phi_n : \mathcal{X}^n \rightarrow \R$ given by
-\[
-  \mathbb{E}_n(\phi_n) \coloneqq \int \phi_n(x_{1:n})
-  \hat{\pi}_n(x_{1:n}) dx_{1:n}
-\]
-can then be estimated by
-\[
-  \mathbb{E}_n^{\text{MC}}(\phi_n) \coloneqq \int \phi_n(x_{1:n})
-  \hat{\pi}_n(x_{1:n}) dx_{1:n} = \frac{1}{N} \sum_{i=1}^N
-  \phi_n(X_{1:n}^i) \,.
-\]
-It is straightforward to check that this estimator is unbiased and
-that the variance of the approximation error decreases
-\textbf{independent of the dimension} of the space $\mathcal{X}^n$ at
-a rate of $\mathcal{O}(1/N)$. This is usually not the case with
-traditional numerical integration methods where an increase in the
-dimension of the integral makes its approximation considerably harder.
+\date{}
 
-Note, however, that this Monte Carlo approach requires sampling from
-$\pi_n(\cdot)$ which might not be possible for complex
-high-dimensional distributions. To this end, we introduce a
-\textbf{proposal density} $q_n(x_{1:n})$ that is only required to be
-defined on the same support as $\pi_n(x_{1:n})$. In a Bayesian
-framwork writing
-\[
-  \pi_n(x_{1:n}) = \frac{\gamma_n(x_{1:n})}{Z_n} =
-  \frac{\gamma_n(x_{1:n})}{\int \gamma_n(x_{1:n}) dx_{1:n}}
-\]
-we require only that
-$\gamma_n : \mathcal{X}^n \rightarrow (0, \infty)$ is known pointwise,
-whereas the \emph{normalising constant} $Z_n$ might be unknown. With
-the proposal density this can be rewritten as
-\begin{equation}
-  \label{eq:is:density}
-  \pi_n(x_{1:n}) = \frac{w_n(x_{1:n})q_n(x_{1:n})}{Z_n} = \frac{w_n(x_{1:n})q_n(x_{1:n})}{\int w_n(x_{1:n})q_n(x_{1:n})dx_{1:n}}
-\end{equation}
-where $w_n(x_{1:n})$ is the \textbf{unnormalised weight} function
-\[
-  w_n(x_{1:n}) = \frac{\gamma_n(x_{1:n})}{q_n(x_{1:n})}\,.
-\]
-Assume we draw $N$ independent samples $X_{1:n}^i \sim q_n(x_{1:n})$.
-We can then estimate $\pi_n(x_{1:n})$ by
-\[
-  \hat{\pi}_n(x_{1:n}) = 
-\]
+\author{ \large
+  Submitted by: \textbf{Nils Friess}\\
+  {\small\today}\\[3ex]
+  \normalsize
+  Supervisors: Prof.\ Robert Scheichl, Gianluca Detommaso \\
+  \normalsize Heidelberg University }
+
+\clearpage\maketitle
+\thispagestyle{empty}
+\newpage
+\setcounter{page}{1}
+
+\include{sections/intro}
+ 
+\printbibliography
+
 \end{document}
 
  
