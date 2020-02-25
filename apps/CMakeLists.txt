@@ -8,12 +8,21 @@ include_directories("./include/gcem/include" "./include/stats/include")
 
 
 add_executable(example1 example_1/main.cc)
-
 set_target_properties(example1 PROPERTIES
 		      CXX_STANDARD 17
 		      CXX_EXTENSIONS OFF)
 
 target_compile_options(example1 PRIVATE ${CUSTOM_FLAGS})
-target_include_directories(example1 PRIVATE ${YOUR_DIRECTORY})
-
 target_link_libraries(example1 PRIVATE lapack armadillo tbb smcpf)
+
+
+
+add_executable(example2 example_2/main.cc)      
+set_target_properties(example2 PROPERTIES
+		      CXX_STANDARD 17
+		      CXX_EXTENSIONS OFF)
+
+target_compile_options(example2 PRIVATE ${CUSTOM_FLAGS})
+target_link_libraries(example2 PRIVATE tbb smcpf)
+
+

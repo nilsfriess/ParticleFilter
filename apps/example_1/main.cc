@@ -11,10 +11,11 @@
 #include <particlefilter.hh>
 
 #include "functors.hh"
-#include "lotkavolterra_bootstrap.hh"
+// #include "lotkavolterra_bootstrap.hh"
+#include "lotkavolterra.hh"
 
 int main() {
-  constexpr long int N = 200;
+  constexpr long int N = 600;
 
   typedef smcpf::ParticleFilter<
       LotkaVolterra::ParticleType,    // Type of one particle
@@ -23,11 +24,11 @@ int main() {
       true, true>                     // save history?
       PF;
 
-  const auto runs = 100;
+  const auto runs = 1;
   std::chrono::duration<double> total_duration;
 
   for (int i = 0; i < runs; i++) {
-    auto model = LotkaVolterra(7. / 3., 1. / 3., 5. / 3., 1.);
+    auto model = LotkaVolterra(6. / 3., 1. / 3., 5. / 3., 1.);
 
     const auto seed =
         std::chrono::high_resolution_clock::now().time_since_epoch().count();

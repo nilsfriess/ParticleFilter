@@ -1,0 +1,122 @@
+\section*{Implementation}
+In this section we discuss an implemenation of a particle filter in
+C++. The particle filter itself is implemented as a dependency-free
+header-only generic library that, while being easy to set up and use,
+is versatile and can be used with a wide variety of problems. This is
+demonstrated by three examples, two of which are based on the same
+problem but are using different prior and proposal distributions.
+
+The library consists of the following classes:
+\begin{itemize}
+\item \texttt{Particle}
+\item \texttt{ParticleFilter}
+\item \texttt{Model}
+\item \texttt{History}
+\end{itemize}
+All of these classes are templated to allow for arbitrary particle
+types, e.\,g.\ the \texttt{Particle} class is of the following form
+\begin{minted}{cpp}
+template <class PT> 
+class Particle {
+private:
+  PT m_value;
+  double m_weight;
+...
+}; 
+\end{minted}
+where the particle type \texttt{PT} could take values of some finite
+set, be a real number (\ie a \texttt{double}) or a $n$-dimensional
+vector etc. The \texttt{ParticleFilter} class implements the
+algorithms introduced above. It takes the following template
+parameters
+\begin{minted}{cpp}
+template <class PT, class OT, size_t N, 
+          bool enable_history = false,
+          bool parallel = false>
+class ParticleFilter
+\end{minted}
+where \texttt{PT} and \texttt{OT} denote the type of particle and
+observation, respectively, \texttt{N} is the number of particles,
+\texttt{enable\_history} specifies whether all particles from every
+timestep should be held in memory (e.\,g.\ for debugging or plotting)
+and \texttt{parallel} specifies whether certain functions should run
+in parallel (see below). Apart from these compile-time parameters, to
+construct a \texttt{ParticleFilter} one also needs to provide an
+instance of a \texttt{Model}, a resampling strategy\footnote{At the
+  moment, only systematic resampling is implemented.}, a resampling
+treshhold and an initial seed for the random number generator
+(rng). Only the first parameter is mandatory, i.\,e.\ the signature of
+the constructor of the \texttt{ParticleFilter} class is given by
+\begin{minted}{cpp}
+ParticleFilter(
+      Model<PT, OT> *t_model,
+      double t_seed = 0,
+      ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
+      double t_treshhold = 0.5)
+\end{minted}
+
+The \texttt{Model} class is implemented as an abstract base class
+(sometimes called interface), meaning that the class itself cannot be
+instaniated. Therefore, in order to define a model, a class that is
+derived from \texttt{Model} has to be implemented. The \texttt{Model}
+class defines the following four pure virtual functions that every
+model that derives from this class needs to override.
+\begin{minted}{cpp}
+virtual void sample_prior(Particle<PT> &t_particle) = 0;
+
+virtual PT zero_particle() = 0;
+
+virtual double update_weight(const Particle<PT> &t_particle_before_sampling,
+			     const Particle<PT> &t_particle_after_sampling,
+                             const OT &t_observation,
+                             double t_time) = 0;
+
+virtual PT sample_proposal(const Particle<PT> &t_particle,
+                           const OT &t_observation,
+                           double t_time) = 0;
+\end{minted}
+
+All these methods are automatically called by the
+\texttt{ParticleFilter}. The method \texttt{sample\_prior} is used to
+initialise the set of particles. It has to set the value of the given
+particle \texttt{t\_particle} using the \texttt{set\_value} method of
+the particle. This is different from the \texttt{update\_weight} and
+\texttt{sample\_proposal} methods that \emph{do not} alter the
+particle themselves. Rather they should return the updated value of
+the particle's weight and value, respectively (see examples below).
+
+The first paramter of the \texttt{update\_weight} method is the
+particle before \texttt{sample\_proposal} is called and the second
+after it is called. This is useful, since the developer cannot specify
+the order in which these two methods are called. However, some models
+require the value of the particle before it has been updated (cf.\
+Example~\ref{ex:lv1}) and some after the sampling step (cf.\
+Example~\ref{ex:lv2}).
+
+\begin{example}
+  Consider the following model (this example has been studied in a
+  number of publications before, see for
+  example~\cite{arulampalam,gordon,kitagawa}). Let
+  \begin{gather*}
+    f(x_n \mid x_{n-1}) = \mathcal{N}(x_n;\, h_n(x_{n-1}), \sigma_{\text{sys}})\\
+    g(y_n \mid x_n) = \mathcal{N}(y_n;\, \frac{{x_n}^2}{20},
+    \sigma_{\text{obs}})
+  \end{gather*}
+  where
+  \[
+    h_n(x_{n-1}) = \frac{1}{2}x_{n-1} + \frac{25 x_{n-1}}{1 + x_{n-1}^2} + 8 \cos(1.2n) \\
+  \]
+\end{example}
+
+\begin{example}[Lotka Volterra using bootstrap filter]\label{ex:lv1}
+\end{example}
+
+\begin{example}[Lotka Volterra using optimal proposal]\label{ex:lv2}
+  
+\end{example}
+
+%%%Local Variables:
+%%% TeX-command-extra-options: "-shell-escape"
+%%% mode: latex
+%%% TeX-master: "../main"
+%%% End:

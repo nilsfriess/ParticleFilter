@@ -8,20 +8,20 @@
 namespace smcpf {
 template <class PT, class OT> class Model {
 public:
-  virtual void sample_prior(Particle<PT> &) const = 0;
+  virtual void sample_prior(Particle<PT> &t_particle) = 0;
 
   // should return a particle with value zero
   // (eg. the zero vector, or just zero in 1D)
-  virtual PT zero_particle() const = 0;
+  virtual PT zero_particle() = 0;
 
   virtual double update_weight(const Particle<PT> &t_particle_before_sampling,
 			       const Particle<PT> &t_particle_after_sampling,
                                const OT &t_observation,
-                               double t_time) const = 0;
+                               double t_time) = 0;
 
   virtual PT sample_proposal(const Particle<PT> &t_particle,
                                  const OT &t_observation,
-                                 double t_time) const = 0;
+                                 double t_time) = 0;
 
   virtual ~Model() {}
   // t_curr_particle.set_weight(
