@@ -6,15 +6,17 @@ is versatile and can be used with a wide variety of problems. This is
 demonstrated by three examples, two of which are based on the same
 problem but are using different prior and proposal distributions.
 
-The library consists of the following classes:
+The library consists of the following classes (and their respective
+header files)
 \begin{itemize}
-\item \texttt{Particle}
-\item \texttt{ParticleFilter}
-\item \texttt{Model}
-\item \texttt{History}
+\item Particle \texttt{(particle.hh)}
+\item ParticleFilter \texttt{(particlefilter.hh)}
+\item Model \texttt{(model.hh)}
+\item History \texttt{(history.hh)}
 \end{itemize}
 All of these classes are templated to allow for arbitrary particle
-types, e.\,g.\ the \texttt{Particle} class is of the following form
+types, e.\,g.\ the \texttt{Particle} class, that holds the value and
+weight of a single particle, is of the following form
 \begin{minted}{cpp}
 template <class PT> 
 class Particle {
@@ -91,7 +93,7 @@ after it is called. This is useful, since the developer cannot specify
 the order in which these two methods are called. However, some models
 require the value of the particle before it has been updated (cf.\
 Example~\ref{ex:lv1}) and some after the sampling step (cf.\
-Example~\ref{ex:lv2}).
+Example~\ref{ex:lv2}). Also, it is important to note that
 
 \begin{example}
   Consider the following model (this example has been studied in a

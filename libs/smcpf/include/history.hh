@@ -1,20 +1,19 @@
 #ifndef HISTORY_HH
 #define HISTORY_HH
 
-#include <ostream>
-#include <vector>
 #include <algorithm>
-
-#include "particle.hh"
+#include <ostream>
+#include <tuple>
+#include <vector>
 
 namespace smcpf {
-template <class PT> class History {
+template <class PT, typename... Args> class History {
 private:
   struct HistoryElement {
     PT m_mean;
     PT m_weighted_mean;
     bool m_was_resampled = false;
-    double m_time = 0.0;
+    std::tuple<Args...> m_args;
   };
 
   HistoryElement m_current;
@@ -26,30 +25,41 @@ public:
     m_current.m_weighted_mean = t_weighted_mean;
   }
 
-  void set_time(double t_time) {
-    m_current.m_time = t_time;
-  }
+  void set_current_resampled() { m_current.m_was_resampled = true; }
 
-  void set_current_resampled() {
-    m_current.m_was_resampled = true;
-  }
-
+  /* This method appends the current history element to the
+   * list of all history elements and clears the state. This
+   * is called after the particles are evolved and possibly
+   * resampling has been performed.
+   */
   void flush() {
     m_history.push_back(m_current);
     m_current = HistoryElement();
   }
 
-  template <class PTWriter>
-  void write_all(std::ostream &t_out, PTWriter t_writer, char t_separator = ',') {
-    // TODO: Write the current history to the output stream in a csv style
-    // format using t_separator
+  void set_args(Args... t_args) {
+    m_current.m_args = std::make_tuple(t_args...);
+  }
+
+  /* This methods writes all the save history elements to the ostream t_out
+   * using a csv style format with the given seperator. The template parameters
+   * PTWriter and ArgWriter are both assumed to be functors that do the
+   * following:
+   * - PTWriter: Functor that takes a value of type PT and converts it to
+   * string.
+   * - ArgWriter: Functor that takes a tuple of the variadic arguments and
+   * converts them to string.
+   * In other words, they convert particles and Args... to std::strings.
+   */
+  template <class PTWriter, class ArgWriter>
+  void write_all(std::ostream &t_out, PTWriter t_writer, ArgWriter t_awriter,
+                 char t_separator = ',') {
     std::for_each(m_history.begin(), m_history.end(),
                   [&](const HistoryElement &t_hist) {
-		    t_out << t_hist.m_time << t_separator
-			  << t_writer(t_hist.m_mean) << t_separator
-			  << t_writer(t_hist.m_weighted_mean) << t_separator
-			  << t_hist.m_was_resampled << t_separator
-			  << '\n';
+                    t_out << t_writer(t_hist.m_mean) << t_separator
+                          << t_writer(t_hist.m_weighted_mean) << t_separator
+                          << (t_hist.m_was_resampled ? "1" : "0") << t_separator
+                          << t_awriter(t_hist.m_args) << '\n';
                   });
   }
 };

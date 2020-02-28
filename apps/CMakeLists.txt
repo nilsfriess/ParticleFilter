@@ -6,23 +6,34 @@ set(CUSTOM_FLAGS -O3 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast 
 
 include_directories("./include/gcem/include" "./include/stats/include")
 
-
-add_executable(example1 example_1/main.cc)
+########################################################################
+# Example 1
+# Simple nonlinear non-Gaussian model
+########################################################################
+add_executable(example1 example1/main.cc)      
 set_target_properties(example1 PROPERTIES
 		      CXX_STANDARD 17
 		      CXX_EXTENSIONS OFF)
 
 target_compile_options(example1 PRIVATE ${CUSTOM_FLAGS})
-target_link_libraries(example1 PRIVATE lapack armadillo tbb smcpf)
+target_link_libraries(example1 PRIVATE smcpf)
 
+########################################################################
+# Example 1
+# Lotka volterra model with bootstrap filter
+########################################################################
 
-
-add_executable(example2 example_2/main.cc)      
+add_executable(example2 example2/main.cc)
 set_target_properties(example2 PROPERTIES
 		      CXX_STANDARD 17
 		      CXX_EXTENSIONS OFF)
 
 target_compile_options(example2 PRIVATE ${CUSTOM_FLAGS})
-target_link_libraries(example2 PRIVATE tbb smcpf)
+target_link_libraries(example2 PRIVATE lapack armadillo tbb smcpf)
 
+########################################################################
+# Example 1
+# Lotka volterra model with optimal filter
+########################################################################
 
+# TODO #

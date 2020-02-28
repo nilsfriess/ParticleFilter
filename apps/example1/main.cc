@@ -67,8 +67,7 @@ public:
 
   virtual double zero_particle() override { return 0.0; }
 
-  virtual void sample_prior([
-      [maybe_unused]] Particle<double> &t_particle) override {
+  virtual void sample_prior(Particle<double> &t_particle) override {
     t_particle.set_value(m_prior(m_gen));
   }
 
@@ -78,10 +77,10 @@ public:
    * the pdf is a Gaussian, centered at x^2 / 20 with variance 1, where x is
    * the current particle's value.
    */
-  virtual double update_weight(
-      [[maybe_unused]] const Particle<double> &t_particle_before_sampling,
-      const Particle<double> &t_particle_after_sampling,
-      const double &t_observation, [[maybe_unused]] int t_step) override {
+  virtual double
+  update_weight(const Particle<double> & /*t_particle_before_sampling*/,
+                const Particle<double> &t_particle_after_sampling,
+                const double &t_observation, int /*t_step*/) override {
     auto pval = t_particle_after_sampling.get_value();
     auto mean = (pval * pval) / 20.0;
     auto var = 1.0;
@@ -97,7 +96,7 @@ public:
    * observation.
    */
   virtual double sample_proposal(const Particle<double> &t_particle,
-                                 [[maybe_unused]] const double &t_observation,
+                                 const double & /*t_observation*/,
                                  int t_step) override {
     auto pval = t_particle.get_value();
     auto mean = pval / 2.0 + (25 * pval) / (1 + pval * pval) +

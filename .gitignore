@@ -1,0 +1,14 @@
+*.aux
+*.log
+*.out
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.synctex.gz
+
+*.el
+
+
+build/
+_minted-main/
