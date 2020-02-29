@@ -274,7 +274,7 @@ see~\cite{douc}.  The most simple resampling strategy, called
 performance compared to other techniques. It only is mentioned because
 it is the method introduced by Gordon et al. in~\cite{gordon} as part
 of the\emph{ bootstrap filter}, that uses the prior as the proposal
-density (c.\,f.\ Example~\ref{ex:lv1}).
+density (c.\,f.\ Examples~\ref{ex:1} and~\ref{ex:lv1}).
 
 Both the methods presented in the following are based on drawing
 samples from the point mass distribution
@@ -378,10 +378,11 @@ weights are sufficiently uniform and we would like to have a criterion
 allowing us to check whether resampling should be performed. To that
 end the effective sampling size ($ESS$) is often used which can be
 estimated using
-\[
+\begin{equation}
+  \label{eq:ESS}
   ESS \approx {\left( \sum_{i=1}^N {\left( w_t^{(i)} \right)}^2
     \right)}^{-1} \,,
-\]
+\end{equation}
 where the weights $w_t^{(i)}$ are assumed to be already normalised
 (for more details, see~\cite[179]{arulampalam}). If the variance of
 the weights is maximal, i.\,e.\ if all but one of the weights are
@@ -394,8 +395,8 @@ same value $w_t^{(i)} = 1/N$ the value of $ESS$ is $N$, since
 Therefore, we will only resample if $ESS$ is below a certain
 threshold, e.\,g.\ $N/2$.
 
-We have now gathered everything we need to implement a particle filter,
-since essentially particle filters are simply a combination of
+We have now gathered everything we need to implement a particle
+filter, since essentially particle filters are simply a combination of
 sequential importance sampling and some resampling
 strategies. Therefore, sometimes these methods are also called
 as\emph{Sequential Importance Sampling with Resampling} abbreviated by

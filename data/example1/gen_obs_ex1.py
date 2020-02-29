@@ -14,7 +14,10 @@ def obs(x):
 vals = np.array(range(0,100))
 x = np.empty(vals.size) # exact values
 for index, k in enumerate(vals):
-    x[index] = f(x, k)
+    if index == 0:
+        x[index] = np.random.normal(0, 0.5, 1)
+    else:
+        x[index] = f(x[index-1], k)
 
 o = np.empty(vals.size) # observations
 for index, exact in enumerate(x):

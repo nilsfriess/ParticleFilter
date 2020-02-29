@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(SMCPF-apps)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 set(CUSTOM_FLAGS -O3 -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wsign-conversion -Wmisleading-indentation -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wnull-dereference -Wuseless-cast -Wdouble-promotion -Wformat=2 -march=native -pipe)
 
 include_directories("./include/gcem/include" "./include/stats/include")
@@ -19,7 +19,7 @@ target_compile_options(example1 PRIVATE ${CUSTOM_FLAGS})
 target_link_libraries(example1 PRIVATE smcpf)
 
 ########################################################################
-# Example 1
+# Example 2
 # Lotka volterra model with bootstrap filter
 ########################################################################
 
@@ -32,8 +32,14 @@ target_compile_options(example2 PRIVATE ${CUSTOM_FLAGS})
 target_link_libraries(example2 PRIVATE lapack armadillo tbb smcpf)
 
 ########################################################################
-# Example 1
-# Lotka volterra model with optimal filter
+# Example 3
+# Lotka volterra model with optimal proposal
 ########################################################################
 
-# TODO #
+add_executable(example3 example3/main.cc)
+set_target_properties(example3 PROPERTIES
+		      CXX_STANDARD 17
+		      CXX_EXTENSIONS OFF)
+
+target_compile_options(example3 PRIVATE ${CUSTOM_FLAGS})
+target_link_libraries(example3 PRIVATE lapack armadillo tbb smcpf)

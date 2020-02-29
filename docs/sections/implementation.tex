@@ -1,10 +1,23 @@
 \section*{Implementation}
 In this section we discuss an implemenation of a particle filter in
-C++. The particle filter itself is implemented as a dependency-free
+C++. The particle filter itself is implemented as a
+dependency-free\footnote{The libary can be configured to run some
+  parts in parallel. In that case the program has to be linked against
+  Intel's Threading Building Blocks (TBB) library~\cite{intel}.}
 header-only generic library that, while being easy to set up and use,
 is versatile and can be used with a wide variety of problems. This is
 demonstrated by three examples, two of which are based on the same
 problem but are using different prior and proposal distributions.
+
+The code can be found at
+\url{github.com/nilsfriess/ParticleFilter}. The GitHub repository
+contains a CMake~\cite{cmake} project containing the actual library in
+the folder \texttt{libs/smcpf} and three examples located in the
+folder \texttt{apps}. Information about the dependencies of the
+individual examples and instructions on how to build and run them can
+be found in the \texttt{README.md} file inside the root folder of the
+repository. The \texttt{data} folder contains sample data to use with
+the examples and scripts that were used to generate the sample data.
 
 The library consists of the following classes (and their respective
 header files)
@@ -14,9 +27,10 @@ header files)
 \item Model \texttt{(model.hh)}
 \item History \texttt{(history.hh)}
 \end{itemize}
-All of these classes are templated to allow for arbitrary particle
-types, e.\,g.\ the \texttt{Particle} class, that holds the value and
-weight of a single particle, is of the following form
+All of these classes lie in a namspace \texttt{smcpf} and are
+templated to allow for arbitrary particle types, e.\,g.\ the
+\texttt{Particle} class, that holds the value and weight of a single
+particle is of the following form
 \begin{minted}{cpp}
 template <class PT> 
 class Particle {
@@ -32,60 +46,100 @@ vector etc. The \texttt{ParticleFilter} class implements the
 algorithms introduced above. It takes the following template
 parameters
 \begin{minted}{cpp}
-template <class PT, class OT, size_t N, 
+template <class PT, class OT, 
+          size_t N, 
           bool enable_history = false,
-          bool parallel = false>
-class ParticleFilter
+          bool parallel = false, 
+          typename... Args>
+class ParticleFilter { ... }
+
 \end{minted}
 where \texttt{PT} and \texttt{OT} denote the type of particle and
 observation, respectively, \texttt{N} is the number of particles,
-\texttt{enable\_history} specifies whether all particles from every
-timestep should be held in memory (e.\,g.\ for debugging or plotting)
-and \texttt{parallel} specifies whether certain functions should run
-in parallel (see below). Apart from these compile-time parameters, to
-construct a \texttt{ParticleFilter} one also needs to provide an
-instance of a \texttt{Model}, a resampling strategy\footnote{At the
-  moment, only systematic resampling is implemented.}, a resampling
-treshhold and an initial seed for the random number generator
-(rng). Only the first parameter is mandatory, i.\,e.\ the signature of
-the constructor of the \texttt{ParticleFilter} class is given by
+\texttt{enable\_history} specifies whether some information from every
+timestep should be held in memory (e.\,g.\ for debugging or plotting,
+see below) and \texttt{parallel} specifies whether certain functions
+should run in parallel (see below). The last template parameter
+\texttt{Args} is \emph{parameter pack} that can hold an arbitrary
+number of additional arguments of any type. The use for such arguments
+is explained in the description of the \texttt{Model} class below.  As
+mentioned above, if \texttt{parallel} is set to \texttt{true}
+applications using the library have to be linked against Intel's TBB
+library~\cite{intel}. Not using the parallel capabilities of the
+library does not change they way it has to be used but rather how the
+internal algorithms are run.
+
+Apart from these compile-time parameters, to construct a
+\texttt{ParticleFilter} one also needs to provide an instance of a
+\texttt{Model}, a resampling strategy\footnote{At the moment, only
+  systematic resampling is implemented.}, a resampling treshhold and
+an initial seed for the random number generator (rng). Only the first
+parameter is mandatory, i.\,e.\ the signature of the constructor of
+the \texttt{ParticleFilter} class is given by
 \begin{minted}{cpp}
 ParticleFilter(
-      Model<PT, OT> *t_model,
-      double t_seed = 0,
-      ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
-      double t_treshhold = 0.5)
+    Model<PT, OT, Args...> *t_model,
+    ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
+    double t_treshhold = 0.5, 
+    double t_seed = 0)
 \end{minted}
+The value of \texttt{t\_strategy} can either be the default
+\texttt{RESAMPLING\_SYSTEMATIC} or \texttt{RESAMPLING\_NONE}, both of
+which are defined in the enumeration \texttt{ResamplingStrategy}. The
+value of \texttt{t\_treshhold} is used to decide when to actually
+perform resampling. At each time step and estimate of the effective
+sampling size is computed using~\eqref{eq:ESS}. The particles are only
+resampled if this value is below \texttt{t\_treshhold} $\times$
+\texttt{N}. Thus, \texttt{t\_treshhold} should take values between
+zero and one (since ESS takes values between 1 and \texttt{N}), where
+a value of zero implies that the particles are never resampled and one
+leads to resampling being performed at each step. Before explaining
+the methods defined by the \texttt{ParticleFilter} we discuss the
+\texttt{Model} class.
 
-The \texttt{Model} class is implemented as an abstract base class
-(sometimes called interface), meaning that the class itself cannot be
-instaniated. Therefore, in order to define a model, a class that is
-derived from \texttt{Model} has to be implemented. The \texttt{Model}
-class defines the following four pure virtual functions that every
-model that derives from this class needs to override.
+This class is implemented as an abstract base class (sometimes called
+interface), meaning that the class itself cannot be
+instantiated. Therefore, in order to define a model, a class that is
+derived from \texttt{Model} has to be implemented. The class is also
+templated with the following parameters
 \begin{minted}{cpp}
-virtual void sample_prior(Particle<PT> &t_particle) = 0;
-
+template <class PT, 
+          class OT, 
+          typename... Args> 
+class Model { ... }
+\end{minted}
+where \texttt{PT} and \texttt{OT} are again the particle and
+observation type. To explain the usage of the parameter pack
+\texttt{Args} we first discuss the virtual functions of the class:
+\begin{minted}{cpp}
 virtual PT zero_particle() = 0;
 
+virtual void sample_prior(Particle<PT> &t_particle) = 0;
+
 virtual double update_weight(const Particle<PT> &t_particle_before_sampling,
-			     const Particle<PT> &t_particle_after_sampling,
-                             const OT &t_observation,
-                             double t_time) = 0;
+                             const Particle<PT> &t_particle_after_sampling,
+                             const OT &t_observation, 
+                             Args... t_args) = 0;
 
 virtual PT sample_proposal(const Particle<PT> &t_particle,
-                           const OT &t_observation,
-                           double t_time) = 0;
+                           const OT &t_observation, 
+                           Args... t_args) = 0;
 \end{minted}
-
-All these methods are automatically called by the
-\texttt{ParticleFilter}. The method \texttt{sample\_prior} is used to
-initialise the set of particles. It has to set the value of the given
-particle \texttt{t\_particle} using the \texttt{set\_value} method of
-the particle. This is different from the \texttt{update\_weight} and
-\texttt{sample\_proposal} methods that \emph{do not} alter the
-particle themselves. Rather they should return the updated value of
-the particle's weight and value, respectively (see examples below).
+All these methods are \emph{pure virtual} methods meaning that a model
+class that derives from this class must implement all four of
+them. They all get automatically called by the
+\texttt{ParticleFilter}. The first method should return a value of
+type \texttt{PT} that represents zero, \ie in the one dimensional case
+where \texttt{PT = double} this should be 0, if \texttt{PT} is \eg two
+dimensional, this method should return the 2D zero vector and
+analogously for higher dimensions and other particle types. The method
+\texttt{sample\_prior} is used to initialise the set of particles. It
+has to set the value of the given particle \texttt{t\_particle} using
+the \texttt{set\_value} method of the particle. This is different from
+the \texttt{update\_weight} and \texttt{sample\_proposal} methods that
+\emph{do not} alter the particle themselves. Rather they should return
+the value the the particle's weight should get multiplied by and the
+particle's new value, respectively (see examples below).
 
 The first paramter of the \texttt{update\_weight} method is the
 particle before \texttt{sample\_proposal} is called and the second
@@ -93,22 +147,164 @@ after it is called. This is useful, since the developer cannot specify
 the order in which these two methods are called. However, some models
 require the value of the particle before it has been updated (cf.\
 Example~\ref{ex:lv1}) and some after the sampling step (cf.\
-Example~\ref{ex:lv2}). Also, it is important to note that
+Example~\ref{ex:1} and~\ref{ex:lv2}). The type of the last parameter
+\texttt{t\_args} of both methods is specified by the template
+parameter pack \texttt{Args}. It can be used to supply an arbitrary
+number of additional parameters of arbitrary types to these methods.
+This can be used if the proposal pdf and weight update function depend
+on additional parameters like the current time step, which is the case
+in all of the following examples. The types provided as \texttt{Args}
+to the \texttt{Model} class and those provided to the
+\texttt{ParticleFilter} must match, otherwise the program will not
+compile. The following simple example is used to demonstrate how a
+model can be defined.
 
-\begin{example}
-  Consider the following model (this example has been studied in a
-  number of publications before, see for
-  example~\cite{arulampalam,gordon,kitagawa}). Let
+\begin{example}\label{ex:1}
+  This example has been studied in a number of publications before,
+  see for example~\cite{arulampalam,gordon,kitagawa}. The
+  implementation can be found in the file
+  \texttt{apps/example1/main.cc}. Let
   \begin{gather*}
-    f(x_n \mid x_{n-1}) = \mathcal{N}(x_n;\, h_n(x_{n-1}), \sigma_{\text{sys}})\\
-    g(y_n \mid x_n) = \mathcal{N}(y_n;\, \frac{{x_n}^2}{20},
+    p(x_0) = \mathcal{N}(0,0.5)\\
+    p(x_n \mid x_{n-1}) = \mathcal{N}(x_n;\, h_n(x_{n-1};n), \sigma_{\text{sys}})\\
+    p(y_n \mid x_n) = \mathcal{N}(y_n;\, \frac{{x_n}^2}{20},
     \sigma_{\text{obs}})
   \end{gather*}
   where
+  \begin{equation}
+    \label{eq:ex1:h}
+    h_n(x_{n-1};n) = \frac{1}{2}x_{n-1} + \frac{25 x_{n-1}}{1 + x_{n-1}^2} + 8 \cos(1.2n) \\
+  \end{equation}
+  and $\mathcal{N}(\mu, \sigma)$ denotes a Gaussian distribution with
+  mean $\mu$ and variance $\sigma$ and\todo{sigma variance or sigma 2
+    std} $\mathcal{N}(x; \mu, \sigma)$ denotes a Gaussian pdf with
+  mean $\mu$ and variance $\sigma$ evaluated at $x$.\footnote{Later,
+    we need multivariate Gaussian ditributions. The notation carrys
+    over to the mutlidimensional case with $\sigma$ replaced by
+    $\Sigma$ then denotes the covariance matrix.} We choose
+  $\sigma_{\text{sys}} = 10$ and $\sigma_{\text{obs}} = 1$.
+
+  Since both the particles and observations are one-dimensional we
+  choose \texttt{PT = double,\ OT = double}. Note that $h$ defined
+  in~\eqref{eq:ex1:h} depends on the index of the current time step
+  $n$. Therefore, we provide one additional template parameter, \ie we
+  set \texttt{Args = int}. Hence, the model could be defined as
+\begin{minted}{cpp}
+class ExampleModel : public Model<double, double, int> {
+\end{minted}
+  Here, the zero particle is simple the value \texttt{0.0} and the
+  prior is a Gaussian, centered at 0 with variance 0.5.
+\begin{minted}{cpp}
+...
+public:
+  virtual double zero_particle() override { return 0.0; }
+
+  virtual void sample_prior(Particle<double> &t_particle) override {
+    t_particle.set_value(m_prior(m_gen));
+  }
+\end{minted}
+  where \texttt{m\_prior} and \texttt{m\_gen} are defined as
+\begin{minted}{cpp}
+...
+private:
+  std::mt19937 m_gen;
+  std::normal_distribution<> m_prior{0, 0.5};
+\end{minted}
+  The class \texttt{std::mt19937} defines a pseudo random number
+  generator based on the popular \emph{Mersenne Twister} algorithm.
+
+  To implement the remaining two methods we first have to choose a
+  proposal density. For simplicity, we decided to use the prior
+  $p(x_n \mid x_{n-1})$, \ie we implement a bootstrap particle filter.
+  The recursive weight update formula~\eqref{eq:weight_update} then
+  simplifies to
   \[
-    h_n(x_{n-1}) = \frac{1}{2}x_{n-1} + \frac{25 x_{n-1}}{1 + x_{n-1}^2} + 8 \cos(1.2n) \\
+    w_k^{(i)} \propto p(y_k \mid x_k^{(i)})\, w^{(i-1)}_k \,,
   \]
+  and we obtain
+\begin{minted}{cpp}
+  virtual double
+  update_weight(const Particle<double> & /*t_particle_before_sampling*/,
+                const Particle<double> &t_particle_after_sampling,
+                const double &t_observation, int /*t_step*/) override {
+    auto pval = t_particle_after_sampling.get_value();
+    auto mean = (pval * pval) / 20.0;
+    auto var = 1.0;
+
+    return normal_pdf(t_observation, mean, var);
+  }
+\end{minted}
+  The function \texttt{normal\_pdf(double, double, double)} is defined
+  in the file \texttt{helper.hh} and simply implements a Gaussian pdf.
+  Note that this function does not return the new value of the weight
+  but rather the value the weight should be multiplied with, \ie in
+  our case $p(y_k \mid x_k^{(i)})$.
+
+  Since in this case the proposal is the prior, the
+  \texttt{sample\_proposal} method is a straightforward implementation
+  of $p(x_k^{(i)} \mid x_{k-1}^{(i)})$ defined above.
+\begin{minted}{cpp}
+  virtual double sample_proposal(const Particle<double> &t_particle,
+                                 const double & /*t_observation*/,
+                                 int t_step) override {
+    auto pval = t_particle.get_value();
+    auto mean = pval / 2.0 + (25 * pval) / (1 + pval * pval) +
+                8 * std::cos(1.2 * (t_step));
+    auto var = 10.0;
+
+    std::normal_distribution<> proposal{mean, var};
+    return proposal(m_gen);
+  }
+\end{minted}
+  With these four methods the model is fully defined and can be used
+  with a \texttt{ParticleFilter}. In the file
+  \texttt{apps/example1/main.cc} two additional methods
+  \begin{itemize}
+  \item \mint{cpp}|void load_observations(const std::string
+    &t_filename)|
+  \item \mint{cpp}|std::optional<std::pair<double, double>>
+    next_observation()|
+  \end{itemize}
+  are defined. The first method loads observations from a \texttt{csv}
+  file (comma-separated values) and the second method returns a new
+  observation each time it is called. An observation consists of a
+  time index and the actual observation. The artificial observations
+  can be generated using the Python script
+  \texttt{data/example1/gen\_obs\_ex1.py} that generates 100 random
+  samples $x_k \sim p(x_k \mid x_{k-1})$ where $x_0 \sim p(x_0)$. The
+  observations are then generated by squaring these values, dividing
+  them by 20 and perturbing them by additive Gaussian noise such that
+  they are distributed according to $p(y_k \mid x_k)$. These
+  artificial observations and the corresponding time steps are then
+  written to a file that can be read by the method
+  \texttt{load\_observations}.
 \end{example}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \begin{example}[Lotka Volterra using bootstrap filter]\label{ex:lv1}
 \end{example}
@@ -122,3 +318,4 @@ Example~\ref{ex:lv2}). Also, it is important to note that
 %%% mode: latex
 %%% TeX-master: "../main"
 %%% End:
+ 

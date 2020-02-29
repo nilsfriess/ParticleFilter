@@ -13,15 +13,15 @@ using namespace boost::numeric::odeint;
 
 #include "functors.hh"
 
-class LotkaVolterra : public smcpf::Model<arma::dvec, double> {
+class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
 private:
   const double m_alpha, m_beta, m_gamma, m_delta;
 
   BivariateNormal m_prior;
 
   // Constants for computing the proposal
-  const arma::dmat m_sys_cov{{0.5, 0}, {0, 0.5}};
-  const double m_obs_cov{0.5};
+  const arma::dmat m_sys_cov{{1, 0}, {0, 1}};
+  const double m_obs_cov{2};
   const arma::dmat m_obs_mat{{0, 1}};
 
   const arma::dmat m_model_cov =
@@ -76,10 +76,10 @@ public:
   LotkaVolterra(double t_alpha, double t_beta, double t_gamma, double t_delta)
       : m_alpha(t_alpha), m_beta(t_beta), m_gamma(t_gamma), m_delta(t_delta) {
     // initialise prior
-    const arma::dvec mu{{3}, {3}};
-    const arma::dmat sigma{{0.5, 0}, {0, 0.5}};
+    const arma::dvec mu{{4}, {6}};
+    const arma::dmat sigma{{1, 0}, {0, 1}};
     m_prior = BivariateNormal(mu, sigma);
-    load_observations("obs_ex1.csv");
+    load_observations("obs_ex2.csv");
   }
 
   virtual void sample_prior(smcpf::Particle<arma::dvec> &t_particle) override {
@@ -90,7 +90,7 @@ public:
 
   // weight update formula
   double update_weight(const smcpf::Particle<arma::dvec> &t_particle_before_sampling,
-                       const smcpf::Particle<arma::dvec> &t_particle_after_sampling,
+                       const smcpf::Particle<arma::dvec> &/*t_particle_after_sampling*/,
                        const double &t_observation, double t_time) override {
     const arma::dvec mu = m_obs_mat * evolve(t_particle_before_sampling, t_time);
     const arma::dmat sigma = m_obs_mat * m_sys_cov * m_obs_mat.t() + m_obs_cov;
@@ -122,3 +122,4 @@ public:
 };
 
 #endif // LOTKAVOLTERRA_HH
+

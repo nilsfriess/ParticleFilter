@@ -5,11 +5,10 @@
 #include <iostream>
 #include <optional>
 #include <random>
+#include <sstream>
 #include <string>
 
-#include <boost/math/distributions/normal.hpp>
-using boost::math::normal;
-using boost::math::pdf;
+#include "helper.hh" // For normal pdf
 
 #include <model.hh>
 #include <particle.hh>
@@ -85,8 +84,7 @@ public:
     auto mean = (pval * pval) / 20.0;
     auto var = 1.0;
 
-    normal n{mean, var};
-    return pdf(n, t_observation);
+    return normal_pdf(t_observation, mean, var);
   }
 
   /* This method samples from the proposal. In this case, the proposal is the
@@ -125,7 +123,7 @@ public:
 };
 
 int main() {
-  constexpr long int N = 400;
+  constexpr long int N = 1000;
   const auto seed =
       std::chrono::high_resolution_clock::now().time_since_epoch().count();
 

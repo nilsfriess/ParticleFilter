@@ -9,7 +9,7 @@
 #include <particlefilter.hh>
 
 #include "functors.hh"
-#include "lotkavolterra_bootstrap.hh"
+#include "lotkavolterra.hh"
 
 int main() {
   constexpr long int N = 50;
@@ -40,7 +40,7 @@ int main() {
   std::cout << "Time = " << duration.count() << std::endl;
 
   std::ofstream csv_data;
-  csv_data.open("output_ex2.csv");
+  csv_data.open("output_ex3.csv");
 
   const auto pt_writer = [](const arma::vec &t_particle) {
     std::ostringstream ret;
@@ -56,3 +56,4 @@ int main() {
 
   csv_data.close();
 }
+
