@@ -123,9 +123,7 @@ public:
 };
 
 int main() {
-  constexpr long int N = 1000;
-  const auto seed =
-      std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  constexpr size_t N = 400;
 
   typedef smcpf::ParticleFilter<double, // Type of particle (Real number)
                                 double, // Type of observation (Real number)
@@ -140,7 +138,7 @@ int main() {
   /* Setup particle filter to use systematic resampling and resample when
    * effective sampling size is less than 50% of N.
    */
-  PF pf(&model, smcpf::ResamplingStrategy::RESAMPLING_SYSTEMATIC, 0.8, seed);
+  PF pf(&model);
 
   // Here, the actual particle filtering is performed
   while (auto obs = model.next_observation()) {

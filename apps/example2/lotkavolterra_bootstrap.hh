@@ -11,6 +11,8 @@
 #include <boost/numeric/odeint.hpp>
 using namespace boost::numeric::odeint;
 
+#include <armadillo>
+
 #include "functors.hh"
 
 class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
@@ -62,7 +64,7 @@ private:
   }
 
   double extract_predator(const smcpf::Particle<arma::dvec> &t_particle) const {
-    return t_particle.get_value()[0];
+    return t_particle.get_value()[1];
   }
 
 public:
@@ -86,8 +88,8 @@ public:
       const smcpf::Particle<arma::dvec> & /*t_particle_before_sampling*/,
       const smcpf::Particle<arma::dvec> &t_particle_after_sampling,
       const double &t_observation, double /*t_time*/) override {
-    return stats::dnorm(t_observation, t_particle_after_sampling.get_value()[1],
-                        2);
+    return stats::dnorm(t_observation,
+                        extract_predator(t_particle_after_sampling), 2);
   }
 
   arma::dvec sample_proposal(const smcpf::Particle<arma::dvec> &t_curr_particle,

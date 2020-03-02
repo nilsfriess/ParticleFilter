@@ -12,14 +12,14 @@
 #include "lotkavolterra_bootstrap.hh"
 
 int main() {
-  constexpr long int N = 50;
+  constexpr long int N = 1000;
 
   typedef smcpf::ParticleFilter<
       LotkaVolterra::ParticleType,    // Type of one particle
       LotkaVolterra::ObservationType, // Type of observations
       N,                              // Number of Particles
       true,                           // Save history?
-      false,                          // Run parallel?
+      true,                           // Run parallel?
       double>                         // Time type
       PF;
 
