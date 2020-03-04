@@ -2,8 +2,11 @@
 fontsize=11pt,
 paper=a4,
 numbers=noenddot,
-parskip=half
+parskip=half,
+div=13
 ]{scrartcl}
+
+\usepackage[bottom=3cm, top=3cm]{geometry}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -44,6 +47,8 @@ parskip=half
 \setcounter{page}{1}
 
 \include{sections/intro}
+\include{sections/sis}
+\include{sections/resampling}
 \include{sections/implementation}
  
 \printbibliography

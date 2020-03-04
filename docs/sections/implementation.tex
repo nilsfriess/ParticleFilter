@@ -1,13 +1,15 @@
 \section*{Implementation}
-In this section we discuss an implementation of a particle filter in
+In this section we present an implementation of a particle filter in
 C++. The particle filter itself is implemented as a
 dependency-free\footnote{The library can be configured to run some
   parts in parallel. In that case the program has to be linked against
-  Intel's Threading Building Blocks (TBB) library~\cite{intel}.}
-header-only generic library that, while being easy to set up and use,
-is versatile and can be used with a wide variety of problems. This is
-demonstrated by three examples, two of which are based on the same
-problem but are using different prior and proposal distributions.
+  Intel's Threading Building Blocks (TBB) library~\cite{intel}. If the
+  parallel capabilities are not used, the library depends only on the
+  C++ standard library.} header-only generic library that, while being
+easy to set up and use, is versatile and can be used with a wide
+variety of problems. This is demonstrated by three examples, two of
+which are based on the same problem but are using different prior and
+proposal distributions.
 
 The code can be found at
 \url{github.com/nilsfriess/ParticleFilter}. The GitHub repository
@@ -66,8 +68,9 @@ is explained in the description of the \texttt{Model} class below.  As
 mentioned above, if \texttt{parallel} is set to \texttt{true}
 applications using the library have to be linked against Intel's TBB
 library~\cite{intel}. Not using the parallel capabilities of the
-library does not change they way it has to be used but rather how the
-internal algorithms are run.
+library does neither change the way it has to be used nor does it
+limit its capabilities. It only affects how the internal algorithms
+are run.
 
 Apart from these compile-time parameters, to construct a
 \texttt{ParticleFilter} one also needs to provide an instance of a
@@ -87,18 +90,18 @@ The value of \texttt{t\_strategy} can either be the default
 \texttt{RESAMPLING\_SYSTEMATIC} or \texttt{RESAMPLING\_NONE}, both of
 which are defined in the enumeration \texttt{ResamplingStrategy}. The
 value of \texttt{t\_threshold} is used to decide when to actually
-perform resampling. At each time step and estimate of the effective
+perform resampling. At each time step an estimate of the effective
 sampling size is computed using~\eqref{eq:ESS}. The particles are only
 resampled if this value is below \texttt{t\_threshold} $\times$
 \texttt{N}. Thus, \texttt{t\_threshold} should take values between
 zero and one (since ESS takes values between 1 and \texttt{N}), where
 a value of zero implies that the particles are never resampled and one
 leads to resampling being performed at each step. Before explaining
-the methods defined by the \texttt{ParticleFilter} we discuss the
+the methods defined inside the \texttt{ParticleFilter} we discuss the
 \texttt{Model} class.
 
 This class is implemented as an abstract base class (sometimes called
-interface), meaning that the class itself cannot be
+\emph{interface}), meaning that the class itself cannot be
 instantiated. Therefore, in order to define a model, a class that is
 derived from \texttt{Model} has to be implemented. The class is also
 templated with the following parameters
@@ -176,13 +179,13 @@ model can be defined.
     h_n(x_{n-1};n) = \frac{1}{2}x_{n-1} + \frac{25 x_{n-1}}{1 + x_{n-1}^2} + 8 \cos(1.2n) \\
   \end{equation}
   and $\mathcal{N}(\mu, \sigma)$ denotes a Gaussian distribution with
-  mean $\mu$ and variance $\sigma$ and\todo{sigma variance or sigma 2
-    std} $\mathcal{N}(x; \mu, \sigma)$ denotes a Gaussian pdf with
-  mean $\mu$ and variance $\sigma$ evaluated at $x$. We choose
-  $\sigma_{\text{sys}} = 10$ and $\sigma_{\text{obs}} = 1$.
+  mean $\mu$ and variance $\sigma$ and $\mathcal{N}(x; \mu, \sigma)$
+  denotes a Gaussian pdf with mean $\mu$ and variance $\sigma$
+  evaluated at $x$. We choose $\sigma_{\text{sys}} = 10$ and
+  $\sigma_{\text{obs}} = 1$.
 
-  Since both the particles and observations are one-dimensional we
-  choose \texttt{PT = double,\ OT = double}. Note that $h$ defined
+  Since both the particles and observations are one-dimensional we set
+  \texttt{PT = double,\ OT = double}. Note that $h$ defined
   in~\eqref{eq:ex1:h} depends on the index of the current time step
   $n$. Therefore, we provide one additional template parameter, \ie,
   we set \texttt{Args = int}. Hence, the model could be defined as
@@ -200,15 +203,15 @@ public:
     t_particle.set_value(m_prior(m_gen));
   }
 \end{minted}
-  where \texttt{m\_prior} and \texttt{m\_gen} are defined as
+  where \texttt{m\_gen} and \texttt{m\_prior} are defined as
 \begin{minted}{cpp}
 ...
 private:
   std::mt19937 m_gen;
   std::normal_distribution<> m_prior{0, 0.5};
 \end{minted}
-  The class \texttt{std::mt19937} defines a pseudo random number
-  generator based on the popular \emph{Mersenne Twister} algorithm.
+  The class \texttt{std::mt19937} defines a pseudo rng based on the
+  \emph{Mersenne Twister} algorithm.
 
   To implement the remaining two methods we first have to choose a
   proposal density. For simplicity, we use the prior
@@ -216,7 +219,7 @@ private:
   filter.  The recursive weight update
   formula~\eqref{eq:weight_update} then simplifies to
   \[
-    w_k^{(i)} \propto p(y_k \mid x_k^{(i)})\, w^{(i-1)}_k \,,
+    w_k^{(i)} \propto w^{(i)}_{k-1} p(y_k \mid x_k^{(i)}) \,,
   \]
   and we obtain
 \begin{minted}{cpp}
@@ -233,13 +236,13 @@ private:
 \end{minted}
   The function \texttt{normal\_pdf(double, double, double)} is defined
   in the file \texttt{helper.hh} and simply implements a Gaussian pdf.
-  Note that this function does not return the new value of the weight
-  but rather the value the weight should be multiplied with, \ie, in
-  our case $p(y_k \mid x_k^{(i)})$.
+  Note that the \texttt{update\_weight} method does not return the new
+  value of the weight but rather the value the weight should be
+  multiplied with, \ie, in our case $p(y_k \mid x_k^{(i)})$.
 
   Since in this case the proposal is the prior, the
   \texttt{sample\_proposal} method is a straightforward implementation
-  of $p(x_k^{(i)} \mid x_{k-1}^{(i)})$ defined above.
+  of $p(x_k^{(i)} \mid x_{k-1}^{(i)})$ defined by the model above.
 \begin{minted}{cpp}
   virtual double sample_proposal(const Particle<double> &t_particle,
                                  const double & /*t_observation*/,
@@ -254,7 +257,7 @@ private:
   }
 \end{minted}
   With these four methods the model is fully defined and can be used
-  with a \texttt{ParticleFilter}. In the file
+  to construct a \texttt{ParticleFilter}. In the file
   \texttt{apps/example1/main.cc} two additional methods
   \begin{itemize}
   \item \mint{cpp}|void load_observations(const std::string
@@ -264,17 +267,17 @@ private:
   \end{itemize}
   are defined. The first method loads observations from a \texttt{csv}
   file (comma-separated values) and the second method returns a new
-  observation each time it is called. An observation consists of a
-  time index and the actual observation. The artificial observations
-  can be generated using the Python script
-  \texttt{data/example1/gen\_obs\_ex1.py} that generates 100 random
-  samples $x_k \sim p(x_k \mid x_{k-1})$ where $x_0 \sim p(x_0)$. The
-  observations are then generated by squaring these values, dividing
-  them by 20 and perturbing them by additive Gaussian noise such that
-  they are distributed according to $p(y_k \mid x_k)$. These
-  artificial observations and the corresponding time steps are then
-  written to a file that can be read by the method
-  \texttt{load\_observations}.
+  observation each time it is called until all observations have been
+  read. An observation consists of a time index and the actual
+  observation. The artificial observations can be generated using the
+  Python script \texttt{data/example1/gen\_obs\_ex1.py} that generates
+  100 random samples $x_k \sim p(x_k \mid x_{k-1})$ where
+  $x_0 \sim p(x_0)$. The observations are then generated by squaring
+  these values, dividing them by 20 and perturbing them by additive
+  Gaussian noise such that they are distributed according to
+  $p(y_k \mid x_k)$. These artificial observations and the
+  corresponding time steps are then written to a file that can be read
+  by the method \texttt{load\_observations}.
 
   With this model we con now easily implement the actual particle
   filter:
@@ -294,9 +297,10 @@ int main() {
   PF pf(&model);
   ...
 \end{minted}
-  The observations are automatically loaded in the constructor of the
-  model. To run the actual particle filter we have to call the method
-  \texttt{evolve}, defined as
+  The observations are automatically loaded inside the constructor of
+  the model and the initial set of particles is initialised inside the
+  constructor of the \texttt{ParticleFilter}. To run the actual
+  filtering we have to call the method \texttt{evolve}, defined as
 \begin{minted}{cpp}
 void ParticleFilter::evolve(OT t_observation,  Args... t_args)
 \end{minted}
@@ -308,7 +312,8 @@ void ParticleFilter::evolve(OT t_observation,  Args... t_args)
   of one particles does not affect any of the other particles.  In
   addition, this method checks whether resampling is necessary and
   possibly resamples the particles. Resampling, however, cannot be
-  easily parallelized.
+  easily parallelized (there are some publications discussing the
+  parallelization of resampling algorithms, see \eg~\cite{murray}).
 
   The \texttt{evolve} method has to be called at each time step. Using
   the \texttt{next\_observation} method of our model we do this as
@@ -327,7 +332,7 @@ PT ParticleFilter::weighted_mean()
   we set the \texttt{history} flag to \texttt{true}, these means are
   all held in memory and we can read them after all observations have
   been processed. To that end, the \texttt{ParticleFilter} class
-  implements a method
+  provides a method
 \begin{minted}{cpp}
   template <class PTWriter, class ArgWriter>
   void write_history(std::ostream &t_out, 
@@ -337,12 +342,12 @@ PT ParticleFilter::weighted_mean()
 \end{minted}
   that writes the contents of the history to the output stream
   \texttt{t\_out} (\eg a file stream) using the functors
-  \texttt{PTWriter} \texttt{ArgWriter}, which essentially convert
-  values of types \texttt{PT} and \texttt{Args...} to
-  \texttt{std::strings} (\ie, they define how to print these
-  values). For a detailed description on the usage of this method see
-  the example files and the comments in the implementation of the
-  particle filter in \texttt{libs/smcpf/include/particlefilter.hh}.
+  \texttt{PTWriter} and \texttt{ArgWriter}, which have to be
+  implemented such that they convert values of types \texttt{PT} and
+  \texttt{Args...} to \texttt{std::strings} (\ie, they define how to
+  print these values). For a detailed description on the usage of this
+  method see the example files and the comments in the definition of
+  the particle filter class.
 
   Figure~\ref{fig:ex1} shows the plot of one exemplar run together
   with the generated observations and simulated values using the model
@@ -374,13 +379,13 @@ particle types.
   \item $\alpha, \beta, \gamma, \delta$ describe the interaction of
     the predator and prey.
   \end{itemize}
-  We assume that we can observe the number of predators (i.e.\ $y$)
-  but not the number of prey. To this end, we will create artificial
-  values for the predators and preys by solving the Lotka Volterra
-  equations with some initial values. We then ``observe'' the number
-  of predator by perturbing the exact computed values at discrete
-  points in time by additive Gaussian noise. These observations are
-  then used as inputs for the particle filter.
+  We assume that we can observe the predators (i.e.\ $y$) but not the
+  number of prey. To this end, we will create artificial values for
+  the predators and preys by solving the Lotka Volterra equations with
+  some initial values. We then ``observe'' the number of predator by
+  perturbing the exact computed values at discrete points in time by
+  additive Gaussian noise. These observations are then used as inputs
+  for the particle filter.
 
   Formally, this model is defined by the following equations
   \begin{equation}
@@ -401,10 +406,11 @@ particle types.
     F(\bm{x}) = F({(x_1, x_2)}^T) = x_2
   \end{equation}
   or equivalently
-  \[
+  \begin{equation}
+    \label{eq:lv1:obs2}
     F(\bm{x}) = \bm{H} \bm{x}\,,
-  \]
-  where $\bm{H} = (0, 1) \in \R^{1 \times 2}$ is a \emph{observation
+  \end{equation}
+  where $\bm{H} = (0, 1) \in \R^{1 \times 2}$ is an \emph{observation
     matrix}. Additionally, we assume the values of
   $\alpha, \beta, \gamma, \delta$ are known to be
   \[
@@ -413,9 +419,9 @@ particle types.
   \]
 
   To define a model class, we proceed as in the previous
-  example. Since the particles take values in $\R^2$ we cannot just
-  use \texttt{double} values. Since this example should also
-  demonstrate how third-party libraries can be used, instead of using
+  example. Since the particles take values in $\R^2$ we cannot use
+  \texttt{double} values. Since this example should also demonstrate
+  how third-party libraries can be used, instead of using
   \texttt{std::vector} or \texttt{std::array} to model the 2D vectors
   we use a vector class from the linear algebra library
   \emph{Armadillo}~\cite{armadillo}. The model can then be defined as
@@ -423,13 +429,13 @@ particle types.
 class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
 \end{minted}
   where the first parameter \texttt{arma::dvec} defines the particle
-  type (\ie, the two dimensional vector of predator and prey values),
-  the second parameter is again the observation type and the
-  additional \texttt{double} parameter denotes the type of the time
-  steps.
+  type (\ie, the two dimensional vector holding the value of the prey
+  and predator, respectively), the second parameter is again the
+  observation type and the additional \texttt{double} parameter
+  denotes the type of the time steps.
 
   As above, we need to override the four pure virtual methods of the
-  \emph{Model} class. Here, a zero particle is the zero vector, \ie,
+  \texttt{Model} class. Here, a zero particle is the zero vector, \ie,
 \begin{minted}{cpp}
   arma::dvec zero_particle() override { return {0, 0}; }
 \end{minted}
@@ -439,7 +445,7 @@ class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
   functor represents a two-dimensional Gaussian
   distribution. Internally it uses a library called
   \emph{StatsLib}~\cite{stats} which provides a wide variety of
-  statistical distribtions and helper functions, in particular it
+  statistical distributions and helper functions, in particular it
   provides classes and methods to sample from and evaluate
   multivariate normal distributions. After setting up the prior in the
   constructor of the \texttt{LotkaVolterra} class
@@ -456,8 +462,8 @@ class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
 \end{minted}
   As in the previous example, to define the remaining two methods we
   have to choose a proposal density. In this example, we again
-  implement a bootstrap filter, \ie, we use $p(x_t \mid x_{t-1})$ as
-  the proposal and obtain
+  implement a bootstrap filter, \ie, we use
+  $p(\bm{x}_t \mid \bm{x}_{t-1})$ as the proposal and obtain
 \begin{minted}{cpp}
   virtual double update_weight(
       const smcpf::Particle<arma::dvec> & /*t_particle_before_sampling*/,
@@ -476,9 +482,9 @@ class LotkaVolterra : public smcpf::Model<arma::dvec, double, double> {
     return BivariateNormal(mu, cov)();
   }
 \end{minted}
-  The method \texttt{stats::dnorm} from the \texttt{StatsLib}
+  The method \texttt{stats::dnorm} from the \emph{StatsLib}
   library~\cite{stats} used in the \texttt{weight\_update} method
-  implements the density function of a one-dimensional Gaussian. The
+  provides the density function of a one-dimensional Gaussian. The
   method \texttt{extract\_predator} implements the observation
   function $F(\bm{x})$ given in~\eqref{eq:lv1:obs}.
 
@@ -504,9 +510,10 @@ different proposal.
 
 \begin{example}[Lotka Volterra using optimal proposal]\label{ex:lv2}
   Consider the model from the previous example defined
-  in~\eqref{eq:lv}. In~\cite{Doucet2000} Doucet et al showed that for
-  models of this form an optimal proposal density exists in the sense
-  that the variance of the importance weights is minimised.
+  in~\eqref{eq:lv}. In~\cite{Doucet2000} Doucet, Godsill and Andrieu
+  showed that for models of this form an optimal proposal density
+  exists in the sense that the variance of the importance weights is
+  minimised.
 
   In general, this proposal is given by
   \begin{align*}
@@ -519,39 +526,22 @@ different proposal.
   As is illustrated in~\cite[Example 3]{Doucet2000} for models with
   nonlinear internal dynamics and linear measurements both
   $p(x_k \mid x_k^{(i)}, z_k)$ and $p(y_k \mid x_{k-1}^{(i)})$ are
-  Gaussian. Our model obviously fullfills these requirements. To
-  compute the means and variances of the two distributions, we first
-  rewrite the model.
-  \begin{equation}
-    \label{eq:new_model}
-    \begin{aligned}
-      \bm{x}_t &= M(\bm{x}_{t-1};k) + \bm{v}_{t-1} \\
-      y_t &= \bm{H} \bm{x}_t + n_t
-    \end{aligned}
-  \end{equation}
-  where
-  \begin{equation*}
-    \begin{aligned}
-      \bm{v}_{t-1} &\sim \mathcal{N}(\bm{0}, \bm{Q}_{t-1}) \\
-      n_t &\sim \mathcal{N}(0, R_t)
-    \end{aligned}
-  \end{equation*}
-  Defining
+  Gaussian. Our model obviously fulfils these requirements and we can
+  define $p(x_k \mid x_k^{(i)}, z_k)$ and $p(y_k \mid x_{k-1}^{(i)})$
+  as follows (see~\cite{Doucet2000} for the derivation). First let
   \begin{align*}
-    \bm{\Sigma}_t^{-1} &= \bm{Q}_{t-1}^{-1} + \bm{H}^T R_t^{-1} \bm{H}\\
-    \bm{m}_t &= \bm{\Sigma}_t (\bm{Q}_{t-1}^{-1}\, M(\bm{x}_{t-1}; t) + H^T R_t^{-1} y_t)
+    \bm{\Sigma}_t^{-1} &= {(\bm{I} + 1/2 \bm{H}^T \bm{H})}^{-1}\,\\
+    \bm{\mu}_t &= \bm{\Sigma}_t (M(\bm{x}_{t-1}; t) + 1/2 H^T y_t)\,.
   \end{align*}
-  on obtains
+  We can define
   \begin{equation}
     \label{eq:optimal_proposal}
-    p(\bm(x)_t \mid \bm{x}_{t-1}, y_t) = \mathcal{N}(\bm{x}_t;\,
-    \bm{m}_t, \bm{\Sigma}_t)
+    p(\bm{x}_t \mid \bm{x}_{t-1}, y_t) = \mathcal{N}(\bm{x}_t;\, \bm{\mu}_t, \bm{\Sigma}_t)
   \end{equation}
   and
   \begin{equation}
     \label{eq:optimal_weight}
-    p(y_t \mid \bm{x}_{t-1}) = \mathcal{N}(y_t; \, \bm{H}
-    M(\bm{x}_{t-1}; t), \, \bm{Q}_{t-1} + H R_t H^T)\,.
+    p(y_t \mid \bm{x}_{t-1}) = \mathcal{N}(y_t; \, \bm{H} M(\bm{x}_{t-1}; t), \,  \bm{H} \bm{H}^T + 2)\,.
   \end{equation}
   Since this choice of proposal density minimises the variance of the
   weights which implies an increase of the effective sampling size
@@ -562,21 +552,19 @@ different proposal.
   indeed, while the previous example requires resampling to be
   performed at around 20 steps (of a total of 50 steps), using the
   optimal proposal this number is reduced to five resampling steps
-  (both exemplar runs used 5000 particles and a resampling treshold of
-  50\%).
-
-  This also has an effect on the speed of the particle filter since
-  resampling is the only step that is not easily
+  (both exemplar runs used 5000 particles and a resampling threshold
+  of 50\%). This also has an effect on the speed of the particle
+  filter since resampling is the only step that is not easily
   parallelized. Therefore, one wants to resample as few times as
   possible.
 
   The code for this example can be found in the folder
-  \texttt{apps/example3} but is esentially the same as in the previous
-  example with the \texttt{update\_weight} and
+  \texttt{apps/example3} but is essentially the same as in the
+  previous example with the \texttt{update\_weight} and
   \texttt{sample\_proposal} methods altered to
   implement~\eqref{eq:optimal_weight} and~\eqref{eq:optimal_proposal}.
-  For completeness, the results using this example are plotted
-  in Figurep~\ref{fig:ex3}.
+  For completeness, the results using this example are plotted in
+  Figure~\ref{fig:ex3}.
 \end{example}
 
 \begin{landscape}
@@ -624,3 +612,50 @@ different proposal.
 %%% TeX-master: "../main"
 %%% End:
  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
