@@ -128,17 +128,14 @@ int main() {
   typedef smcpf::ParticleFilter<double, // Type of particle (Real number)
                                 double, // Type of observation (Real number)
                                 N,      // Number of particles
-                                true,   // Enable history
-                                false,  // Disable parallel algorithms
                                 int>    // index of observation
       PF;
 
   ExampleModel model;
 
-  /* Setup particle filter to use systematic resampling and resample when
-   * effective sampling size is less than 50% of N.
+  /* Setup particle filter and enable history
    */
-  PF pf(&model);
+  PF pf(&model, true);
 
   // Here, the actual particle filtering is performed
   while (auto obs = model.next_observation()) {

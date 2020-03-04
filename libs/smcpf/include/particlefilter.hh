@@ -5,7 +5,6 @@
 #include <numeric>
 #include <random>
 #include <vector>
-#include <iostream>
 
 #ifdef PF_USE_PARALLEL
 #include <execution>
@@ -19,9 +18,7 @@ namespace smcpf {
 
 enum class ResamplingStrategy { RESAMPLING_NONE, RESAMPLING_SYSTEMATIC };
 
-template <class PT, class OT, size_t N, bool enable_history = false,
-          bool parallel = false, typename... Args>
-class ParticleFilter {
+template <class PT, class OT, size_t N, typename... Args> class ParticleFilter {
 private:
   // every particle also contains its associated weight
   std::array<Particle<PT>, N> m_particles;
@@ -32,16 +29,17 @@ private:
   double m_treshhold;
 
   History<PT, Args...> m_history;
+  bool m_enable_history;
 
   std::mt19937 m_gen; // rng used in resampling
 
 public:
   explicit ParticleFilter(
-      Model<PT, OT, Args...> *t_model,
+      Model<PT, OT, Args...> *t_model, bool t_enable_history = false,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
       double t_treshhold = 0.5, double t_seed = 0)
       : m_model(t_model), m_strategy(t_strategy), m_treshhold(t_treshhold),
-        m_gen(t_seed) {
+        m_enable_history(t_enable_history), m_gen(t_seed) {
     // Create initial set of particles by drawing from the prior so that
     // the particle filter is ready to use after constructing it.
     for (auto &particle : m_particles) {
@@ -49,7 +47,7 @@ public:
       particle.set_weight(1. / N);
     }
 
-    if constexpr (enable_history) {
+    if (m_enable_history) {
       m_history.set_means(mean(), weighted_mean());
       m_history.flush();
     }
@@ -69,13 +67,11 @@ public:
       particle.set_weight(1. / total_weights * particle.get_weight());
     };
 
-#ifdef PF_USE_PARELLEL 
+#ifdef PF_USE_PARELLEL
     std::for_each(std::execution::par_unseq, m_particles.begin(),
-                    m_particles.end(), normalise_particle);
+                  m_particles.end(), normalise_particle);
 #else
-    std::cout << "TEST normalise" << '\n';
-      std::for_each(m_particles.begin(), m_particles.end(),
-                    normalise_particle);
+    std::for_each(m_particles.begin(), m_particles.end(), normalise_particle);
 #endif
   }
 
@@ -105,11 +101,9 @@ public:
 
 #ifdef PF_USE_PARALLEL
     std::for_each(std::execution::par_unseq, m_particles.begin(),
-                    m_particles.end(), transform_weight);
+                  m_particles.end(), transform_weight);
 #else
-    std::cout << "TEST evolve" << '\n';
-      std::for_each(m_particles.begin(), m_particles.end(),
-                    transform_weight);
+    std::for_each(m_particles.begin(), m_particles.end(), transform_weight);
 #endif
 
     if (resampling_necessary()) {
@@ -117,7 +111,7 @@ public:
       m_history.set_current_resampled();
     }
 
-    if constexpr (enable_history) {
+    if (m_enable_history) {
       m_history.set_means(mean(), weighted_mean());
       m_history.set_args(t_args...);
       m_history.flush();

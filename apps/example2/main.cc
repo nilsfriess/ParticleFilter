@@ -6,6 +6,7 @@
 
 #include <armadillo>
 
+#define PF_USE_PARALLEL
 #include <particlefilter.hh>
 
 #include "functors.hh"
@@ -18,8 +19,6 @@ int main() {
       LotkaVolterra::ParticleType,    // Type of one particle
       LotkaVolterra::ObservationType, // Type of observations
       N,                              // Number of Particles
-      true,                           // Save history?
-      true,                           // Run parallel?
       double>                         // Time type
       PF;
 
@@ -27,7 +26,8 @@ int main() {
 
   const auto seed =
       std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  PF pf(&model, smcpf::ResamplingStrategy::RESAMPLING_SYSTEMATIC, 0.5, seed);
+  PF pf(&model, true, smcpf::ResamplingStrategy::RESAMPLING_SYSTEMATIC, 0.5,
+        seed);
 
   auto start = std::chrono::high_resolution_clock::now();
 
