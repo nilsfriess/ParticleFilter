@@ -49,39 +49,50 @@ algorithms introduced above. It takes the following template
 parameters
 \begin{minted}{cpp}
 template <class PT, class OT, 
-          size_t N, 
-          bool enable_history = false,
-          bool parallel = false, 
+          size_t N,  
           typename... Args>
 class ParticleFilter { ... }
 
 \end{minted}
 where \texttt{PT} and \texttt{OT} denote the type of particle and
-observation, respectively, \texttt{N} is the number of particles,
-\texttt{enable\_history} specifies whether some information from every
-time step should be held in memory (e.\,g.\ for debugging or plotting,
-see below) and \texttt{parallel} specifies whether certain functions
-should run in parallel (see below). The last template parameter
-\texttt{Args} is \emph{parameter pack} that can hold an arbitrary
-number of additional arguments of any type. The use for such arguments
-is explained in the description of the \texttt{Model} class below.  As
-mentioned above, if \texttt{parallel} is set to \texttt{true}
-applications using the library have to be linked against Intel's TBB
-library~\cite{intel}. Not using the parallel capabilities of the
-library does neither change the way it has to be used nor does it
-limit its capabilities. It only affects how the internal algorithms
-are run.
+observation, respectively and \texttt{N} is the number of
+particles. The last template parameter \texttt{Args} is
+\emph{parameter pack} that can hold an arbitrary number of additional
+arguments of any type. The use for such arguments is explained in the
+description of the \texttt{Model} class below.
+
+The library can be configure to run parts of it in parallel, \eg the
+particle evolution (see below). To enable this feature, one has to
+define the prepocessor constant \texttt{PF\_USE\_PARALLEL} before the
+header file \texttt{particlefilter.hh} is included, \eg by
+\begin{minted}{cpp}
+#define PF_USE_PARALLEL
+#include <particlefilter.hh>
+\end{minted}
+
+Internally, this uses the C++17 \texttt{execution} header from the C++
+standard library that depends on Intel's TBB
+library~\cite{intel}. This means, if \texttt{PF\_USE\_PARALLEL} is
+set, the TBB header files have to be available for the compiler and
+the program has to be linked against the library \texttt{tbb}. Not
+using the parallel capabilities of the library does neither change the
+way it has to be used nor does it limit its capabilities. It only
+affects how the internal algorithms are run.
 
 Apart from these compile-time parameters, to construct a
 \texttt{ParticleFilter} one also needs to provide an instance of a
 \texttt{Model}, a resampling strategy\footnote{At the moment, only
   systematic resampling is implemented.}, a resampling threshold and
-an initial seed for the random number generator (rng). Only the first
-parameter is mandatory, i.\,e.\ the signature of the constructor of
-the \texttt{ParticleFilter} class is given by
+an initial seed for the random number generator (rng). Additionally, a
+boolean parameter that specifies whether some information from every
+time step should be held in memory has to be given (\eg for debugging
+or plotting, see examples below). Only the first parameter is
+mandatory, i.\,e.\ the signature of the constructor of the
+\texttt{ParticleFilter} class is given by
 \begin{minted}{cpp}
 ParticleFilter(
     Model<PT, OT, Args...> *t_model,
+    bool t_enable_history = false,
     ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
     double t_treshhold = 0.5, 
     double t_seed = 0)
@@ -288,13 +299,11 @@ int main() {
   typedef smcpf::ParticleFilter <double, // Type of particle
                                  double, // Type of observation
                                  N,      // Number of particles
-                                 true,   // Enable history
-                                 false,  // Disable parallel algorithms
                                  int>    // index of observation
                                  PF;
   ExampleModel model;
 
-  PF pf(&model);
+  PF pf(&model, true);
   ...
 \end{minted}
   The observations are automatically loaded inside the constructor of
