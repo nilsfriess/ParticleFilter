@@ -2,10 +2,14 @@
 #define PARTICLE_FILTER_HH
 
 #include <algorithm>
-#include <execution>
 #include <numeric>
 #include <random>
 #include <vector>
+#include <iostream>
+
+#ifdef PF_USE_PARALLEL
+#include <execution>
+#endif
 
 #include "history.hh"
 #include "model.hh"
@@ -65,13 +69,14 @@ public:
       particle.set_weight(1. / total_weights * particle.get_weight());
     };
 
-    if constexpr (parallel) {
-      std::for_each(std::execution::par_unseq, m_particles.begin(),
+#ifdef PF_USE_PARELLEL 
+    std::for_each(std::execution::par_unseq, m_particles.begin(),
                     m_particles.end(), normalise_particle);
-    } else {
-      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
+#else
+    std::cout << "TEST normalise" << '\n';
+      std::for_each(m_particles.begin(), m_particles.end(),
                     normalise_particle);
-    }
+#endif
   }
 
   /* Performs one step of the particle filter algorithm. This is the only method
@@ -98,13 +103,14 @@ public:
                                  t_observation, t_args...));
     };
 
-    if constexpr (parallel) {
-      std::for_each(std::execution::par_unseq, m_particles.begin(),
+#ifdef PF_USE_PARALLEL
+    std::for_each(std::execution::par_unseq, m_particles.begin(),
                     m_particles.end(), transform_weight);
-    } else {
-      std::for_each(std::execution::seq, m_particles.begin(), m_particles.end(),
+#else
+    std::cout << "TEST evolve" << '\n';
+      std::for_each(m_particles.begin(), m_particles.end(),
                     transform_weight);
-    }
+#endif
 
     if (resampling_necessary()) {
       resample();
