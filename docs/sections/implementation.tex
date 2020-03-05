@@ -539,10 +539,10 @@ different proposal.
   define $p(x_k \mid x_k^{(i)}, z_k)$ and $p(y_k \mid x_{k-1}^{(i)})$
   as follows (see~\cite{Doucet2000} for the derivation). First let
   \begin{align*}
-    \bm{\Sigma}_t^{-1} &= {(\bm{I} + 1/2 \bm{H}^T \bm{H})}^{-1}\,\\
-    \bm{\mu}_t &= \bm{\Sigma}_t (M(\bm{x}_{t-1}; t) + 1/2 H^T y_t)\,.
+    \bm{\Sigma}_t &= {\left(\bm{I} + \frac{1}{2} \bm{H}^T \bm{H}\right)}^{-1}\,\\
+    \bm{\mu}_t &= \bm{\Sigma}_t \left(M(\bm{x}_{t-1}; t) + \frac{1}{2} H^T y_t\right)\,.
   \end{align*}
-  We can define
+  Then
   \begin{equation}
     \label{eq:optimal_proposal}
     p(\bm{x}_t \mid \bm{x}_{t-1}, y_t) = \mathcal{N}(\bm{x}_t;\, \bm{\mu}_t, \bm{\Sigma}_t)
