@@ -30,7 +30,7 @@ header files)
 \item History \texttt{(history.hh)}
 \end{itemize}
 All of these classes lie in a namespace \texttt{smcpf} and are
-templated to allow for arbitrary particle types, e.\,g.\ the
+templated to allow for arbitrary particle types, \eg the
 \texttt{Particle} class, that holds the value and weight of a single
 particle is of the following form
 \begin{minted}{cpp}
@@ -87,7 +87,7 @@ an initial seed for the random number generator (rng). Additionally, a
 boolean parameter that specifies whether some information from every
 time step should be held in memory has to be given (\eg for debugging
 or plotting, see examples below). Only the first parameter is
-mandatory, i.\,e.\ the signature of the constructor of the
+mandatory, \ie, the signature of the constructor of the
 \texttt{ParticleFilter} class is given by
 \begin{minted}{cpp}
 ParticleFilter(
@@ -388,7 +388,7 @@ particle types.
   \item $\alpha, \beta, \gamma, \delta$ describe the interaction of
     the predator and prey.
   \end{itemize}
-  We assume that we can observe the predators (i.e.\ $y$) but not the
+  We assume that we can observe the predators (\ie, $y$) but not the
   number of prey. To this end, we will create artificial values for
   the predators and preys by solving the Lotka Volterra equations with
   some initial values. We then ``observe'' the number of predator by
@@ -540,7 +540,7 @@ different proposal.
   as follows (see~\cite{Doucet2000} for the derivation). First let
   \begin{align*}
     \bm{\Sigma}_t &= {\left(\bm{I} + \frac{1}{2} \bm{H}^T \bm{H}\right)}^{-1}\,\\
-    \bm{\mu}_t &= \bm{\Sigma}_t \left(M(\bm{x}_{t-1}; t) + \frac{1}{2} H^T y_t\right)\,.
+    \bm{\mu}_t &= \bm{\Sigma}_t \left(M(\bm{x}_{t-1}; t) + \frac{1}{2} \bm{H}^T y_t\right)\,.
   \end{align*}
   Then
   \begin{equation}
