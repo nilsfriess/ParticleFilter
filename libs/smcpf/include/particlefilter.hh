@@ -26,7 +26,7 @@ private:
   Model<PT, OT, Args...> *m_model;
 
   ResamplingStrategy m_strategy;
-  double m_treshhold;
+  double m_threshold;
 
   History<PT, Args...> m_history;
   bool m_enable_history;
@@ -37,8 +37,8 @@ public:
   explicit ParticleFilter(
       Model<PT, OT, Args...> *t_model, bool t_enable_history = false,
       ResamplingStrategy t_strategy = ResamplingStrategy::RESAMPLING_SYSTEMATIC,
-      double t_treshhold = 0.5, double t_seed = 0)
-      : m_model(t_model), m_strategy(t_strategy), m_treshhold(t_treshhold),
+      double t_threshold = 0.5, double t_seed = 0)
+      : m_model(t_model), m_strategy(t_strategy), m_threshold(t_threshold),
         m_enable_history(t_enable_history), m_gen(t_seed) {
     // Create initial set of particles by drawing from the prior so that
     // the particle filter is ready to use after constructing it.
@@ -120,7 +120,7 @@ public:
 
   /* This method computes an estimate of the effective sampling size and
    * returns a boolean specifying whether or not to resample the current set of
-   * particles. This can be adjusted with the resampling treshhold m_treshhold.
+   * particles. This can be adjusted with the resampling threshold m_threshold.
    */
   bool resampling_necessary() {
     normalise_weights();
@@ -131,8 +131,8 @@ public:
                           const auto weight = particle.get_weight();
                           return s + (weight * weight);
                         });
-    // resample only if ess is below treshhold
-    return (1. / squared_sum) < m_treshhold * N;
+    // resample only if ess is below threshold
+    return (1. / squared_sum) < m_threshold * N;
   }
 
   /* Performs the resampling step. Note that this method does not check
@@ -215,8 +215,8 @@ public:
     m_strategy = t_strategy;
   }
 
-  void set_resampling_treshhold(double t_treshhold) {
-    m_treshhold = t_treshhold;
+  void set_resampling_threshold(double t_threshold) {
+    m_threshold = t_threshold;
   }
 
   /* This method uses the history object to write some info on the particles
